@@ -179,9 +179,57 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
     ctx.drawImage(img, -sp.ax * 2, -sp.ay * 2)
   }
 
-  // --- игрок: Диоген в бочке ---
+  // --- игрок ---
   const blink = p.invuln > 0 && (Math.floor(p.invuln * 14) & 1) === 0
-  if (!p.dead && !blink) {
+  if (!p.dead && !blink && !w.chr.barrel) {
+    // Гиппархия: пешком, с посохом
+    ctx.setTransform(s, 0, 0, s, wx(p.x), wy(p.y))
+    const moving = Math.hypot(p.vx, p.vy) > 10
+    const stride = moving ? Math.sin(p.dist * 0.14) : 0
+    ctx.rotate(stride * 0.04)
+    ctx.translate(0, -Math.abs(stride) * 1.6)
+    const f = p.facing
+    // хитон-колокол с разлётом при шаге
+    ctx.fillStyle = PAL.ink
+    ctx.beginPath()
+    ctx.moveTo(-7 - stride * 2.5, 14)
+    ctx.quadraticCurveTo(-6, -4, -4, -8)
+    ctx.lineTo(4, -8)
+    ctx.quadraticCurveTo(6, -4, 7 + stride * 2.5, 14)
+    ctx.closePath()
+    ctx.fill()
+    // гиматий — диагональная складка
+    ctx.strokeStyle = PAL.ochre
+    ctx.lineWidth = 1.8
+    ctx.beginPath()
+    ctx.moveTo(-4 * f, -6)
+    ctx.quadraticCurveTo(0, 2, 5 * f, 12)
+    ctx.stroke()
+    // голова с пучком и лентой
+    ctx.fillStyle = PAL.ink
+    ctx.beginPath()
+    ctx.arc(1 * f, -13.5, 5, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(-3.6 * f, -16.5, 2.6, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = PAL.ochre
+    ctx.fillRect(1 * f - 5, -16.6, 10, 1.6)
+    ctx.fillStyle = PAL.cream
+    ctx.fillRect(1 * f + 1.6 * f, -14.6, 1.4, 1.4)
+    // посох киника
+    ctx.strokeStyle = PAL.ink
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(8 * f, -10)
+    ctx.lineTo((8 + stride * 1.5) * f, 14)
+    ctx.stroke()
+    ctx.fillStyle = PAL.ink
+    ctx.beginPath()
+    ctx.arc(8 * f, -10.5, 2, 0, Math.PI * 2)
+    ctx.fill()
+  } else if (!p.dead && !blink) {
+    // Диоген в бочке
     const pifos = w.evoPithos ? 1.16 : 1
     ctx.setTransform(s * pifos, 0, 0, s * pifos, wx(p.x), wy(p.y))
     const tilt = Math.max(-0.16, Math.min(0.16, p.vx * 0.0007)) + Math.sin(p.dist * 0.06) * 0.03
@@ -322,8 +370,8 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
     ctx.stroke()
   }
 
-  // --- индикатор заряда рывка вокруг бочки ---
-  if (w.weapons.barrel > 0 && !p.dead && p.charge > 0.02) {
+  // --- индикатор заряда рывка/шага вокруг героя ---
+  if ((w.weapons.barrel > 0 || (!w.chr.barrel && w.chr.dodgeCd > 0)) && !p.dead && p.charge > 0.02) {
     const full = p.charge >= 1
     ctx.strokeStyle = full ? 'rgba(243, 230, 200, 0.95)' : 'rgba(227, 169, 79, 0.7)'
     ctx.lineWidth = (full ? 3 : 2.2) * s * 0.5

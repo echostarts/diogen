@@ -29,7 +29,7 @@ export const UPGRADES: UpDef[] = [
   },
   {
     id: 'w_barrel', name: 'БОЧКА-ТАРАН', desc: 'Дави на скорости, отбрасывай. Движение копит рывок: ПРОБЕЛ.',
-    max: 5, lvl: (w) => w.weapons.barrel, avail: () => true,
+    max: 5, lvl: (w) => w.weapons.barrel, avail: (w) => w.chr.barrel,
     apply: (w) => { w.weapons.barrel++ },
   },
   // --- пассивки ---

@@ -222,6 +222,26 @@ test('лавка: покупка за черепки повышает старт
   expect(errors).toEqual([])
 })
 
+test('второй герой: выкуп Гиппархии за черепки и старт за неё', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.addInitScript(() => {
+    localStorage.setItem('diogen_meta', JSON.stringify({ w: 200, hp: 0, dmg: 0, spd: 0, mag: 0, chars: 1 }))
+  })
+  await page.goto(`/?seed=${SEED_WIN}`)
+  await page.waitForTimeout(600)
+  await page.keyboard.press('ArrowRight') // листаем на Гиппархию (закрыта)
+  await page.waitForTimeout(250)
+  await page.keyboard.press('Enter') // выкуп за 150
+  await page.waitForTimeout(300)
+  expect((await diag(page)).wallet).toBe(50)
+  await page.keyboard.press('Enter') // старт за неё
+  await page.waitForTimeout(500)
+  const d = await diag(page)
+  expect(d.state).toBe('run')
+  expect(d.maxHp).toBe(80) // у Гиппархии меньше здоровья
+  expect(errors).toEqual([])
+})
+
 test('быстрая победа через ?bosshp: экран победы работает', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto(`/?bot=1&seed=${SEED_WIN}&speed=8&bosshp=120`)

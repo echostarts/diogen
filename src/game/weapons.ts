@@ -113,7 +113,7 @@ function updateSpit(w: World, dt: number): void {
   if (t === -2) { tx = w.boss.x; ty = w.boss.y } else { tx = w.enemies[t].x; ty = w.enemies[t].y }
   const base = Math.atan2(ty - p.y, tx - p.x)
   const dmg = S.dmg * (1 + 0.25 * (lvl - 1)) * w.dmgMult()
-  const pierce = 1 + w.pass.pierce
+  const pierce = 1 + w.pass.pierce + w.chr.pierce
   // эволюция «Диатриба»: веер из трёх плевков
   const count = w.evoFan ? CFG.fan.count : 1
   for (let k = 0; k < count; k++) {

@@ -2,7 +2,7 @@ import { STEP, VIEW_H, VIEW_W } from './config'
 import { AudioSys } from './engine/audio'
 import { Input } from './engine/input'
 import { Game } from './game/game'
-import { CARD_H, CARD_W, CARD_Y, cardX, SHOP_BTN, SHOP_PANEL, SHOP_ROW_H, SHOP_ROW_Y } from './game/screens'
+import { CARD_H, CARD_W, CARD_Y, cardX, CHAR_BOX, SHOP_BTN, SHOP_PANEL, SHOP_ROW_H, SHOP_ROW_Y } from './game/screens'
 
 interface Diag {
   state: string
@@ -45,6 +45,8 @@ if (!Number.isFinite(speed) || speed < 1) speed = 1
 if (speed > 12) speed = 12
 const bossHpRaw = Number(params.get('bosshp') ?? '0')
 const bossHpOverride = Number.isFinite(bossHpRaw) && bossHpRaw > 0 ? bossHpRaw : null
+const charRaw = params.get('char')
+const charOverride = charRaw !== null && charRaw !== '' ? Number(charRaw) | 0 : null
 
 const canvas = document.getElementById('game') as HTMLCanvasElement
 const ctx = canvas.getContext('2d', { alpha: false })!
@@ -54,7 +56,7 @@ input.attach()
 const audio = new AudioSys()
 input.onGesture = () => audio.ensure()
 
-const game = new Game(input, audio, { bot: botOn, stress, seed, bossHpOverride })
+const game = new Game(input, audio, { bot: botOn, stress, seed, bossHpOverride, charOverride })
 game.coarse = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches
 // ?debug=1 — доступ к игре из консоли (для отладки и скриптовых проверок)
 if (params.get('debug') === '1') {
@@ -150,8 +152,17 @@ canvas.addEventListener('pointerdown', (e) => {
       break
     }
     case 'title':
-      if (inRect(vx, vy, SHOP_BTN)) input.inject('shop')
-      else input.inject('confirm')
+      if (inRect(vx, vy, SHOP_BTN)) {
+        input.inject('shop')
+      } else if (inRect(vx, vy, CHAR_BOX)) {
+        // края бокса листают героя, центр — выбрать/выкупить
+        const third = (vx - CHAR_BOX.x) / CHAR_BOX.w
+        if (third < 0.3) input.inject('left')
+        else if (third > 0.7) input.inject('right')
+        else input.inject('confirm')
+      } else {
+        input.inject('confirm')
+      }
       break
     case 'shop': {
       const P = SHOP_PANEL

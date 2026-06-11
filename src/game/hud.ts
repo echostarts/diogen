@@ -186,15 +186,17 @@ export class Hud {
       ctx.fill()
     }
 
-    // --- заряд рывка ---
-    if (w.weapons.barrel > 0) {
+    // --- заряд рывка / шага в сторону ---
+    const dodgeChar = !w.chr.barrel && w.chr.dodgeCd > 0
+    if (w.weapons.barrel > 0 || dodgeChar) {
+      const word = dodgeChar ? 'ШАГ' : 'РЫВОК'
       const bw = 150
       const bx = VIEW_W - bw - 12
       const by = VIEW_H - 30
       ctx.textAlign = 'left'
       ctx.font = '700 11px system-ui, sans-serif'
       ctx.fillStyle = 'rgba(243, 230, 200, 0.75)'
-      ctx.fillText(coarse ? 'РЫВОК — ТАП СПРАВА' : 'РЫВОК — ПРОБЕЛ', bx, by - 14)
+      ctx.fillText(coarse ? word + ' — ТАП СПРАВА' : word + ' — ПРОБЕЛ', bx, by - 14)
       ctx.fillStyle = 'rgba(33, 21, 16, 0.7)'
       ctx.fillRect(bx - 2, by - 2, bw + 4, 14)
       const full = p.charge >= 1

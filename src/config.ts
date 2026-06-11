@@ -49,6 +49,39 @@ export const ENEMY_DEF: EnemyDef[] = [
   { hp: 360, speed: 27, r: 26, dmg: 20, xp: 0 }, // сам Платон: мини-босс, зовёт платоников
 ]
 
+// Играбельные персонажи.
+export interface CharDef {
+  id: string
+  name: string
+  hp: number
+  speed: number
+  /** Стартовое оружие. */
+  start: 'lantern' | 'spit'
+  /** Есть ли бочка (таран + рывок через оружие). */
+  barrel: boolean
+  /** Врождённое пробитие плевка. */
+  pierce: number
+  /** Без бочки: уворот на пробеле (перезарядка, сек). */
+  dodgeCd: number
+  desc: string
+  cost: number // черепки; 0 = открыт сразу
+}
+
+export const CHARS: CharDef[] = [
+  {
+    id: 'diogen', name: 'ДИОГЕН', hp: 100, speed: 175,
+    start: 'lantern', barrel: true, pierce: 0, dodgeCd: 0,
+    desc: 'Бочка, фонарь и пять минут терпения. Классика жанра.',
+    cost: 0,
+  },
+  {
+    id: 'hipparchia', name: 'ГИППАРХИЯ', hp: 80, speed: 194,
+    start: 'spit', barrel: false, pierce: 1, dodgeCd: 3.4,
+    desc: 'Без бочки: быстрее, язык острее (+1 пробитие), ПРОБЕЛ — шаг в сторону.',
+    cost: 150,
+  },
+]
+
 export const CFG = {
   player: { hp: 100, speed: 175, r: 13, magnet: 125, pickup: 26, iframes: 0.5 },
   bossAt: 300, // секунда выхода Александра

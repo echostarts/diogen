@@ -1,4 +1,4 @@
-import { CFG, EK_GUARD, EK_MERCHANT, EK_PLATONIST, EK_SOPHIST, VIEW_H, VIEW_W } from '../config'
+import { CFG, CHARS, EK_GUARD, EK_MERCHANT, EK_PLATONIST, EK_SOPHIST, VIEW_H, VIEW_W } from '../config'
 import type { AudioSys } from '../engine/audio'
 import type { Input } from '../engine/input'
 import { Bot } from './bot'
@@ -31,6 +31,8 @@ interface Meta {
   dmg: number
   spd: number
   mag: number
+  /** Открытые герои: битовая маска по индексам CHARS (бит 0 всегда есть). */
+  chars: number
 }
 
 // Красная кромка при низком HP — рендерится один раз.
@@ -55,6 +57,8 @@ export interface GameOpts {
   stress: boolean
   seed: number | null
   bossHpOverride: number | null
+  /** Форсировать героя (?char=, для отладки и ботовых прогонов). */
+  charOverride: number | null
 }
 
 export class Game {
@@ -74,7 +78,8 @@ export class Game {
   coarse = false
   /** Состояние виртуального стика — пишет main.ts, рисует HUD. */
   stick = { active: false, ox: 0, oy: 0, dx: 0, dy: 0 }
-  meta: Meta = { w: 0, hp: 0, dmg: 0, spd: 0, mag: 0 }
+  meta: Meta = { w: 0, hp: 0, dmg: 0, spd: 0, mag: 0, chars: 1 }
+  charId = 0
   shopSel = 0
   private readonly shopRowsBuf: ShopRow[] = []
   private heartT = 0
@@ -87,7 +92,11 @@ export class Game {
     this.opts = opts
     this.world = new World(audio)
     this.loadMeta()
+    if (opts.charOverride !== null && CHARS[opts.charOverride]) {
+      this.charId = opts.charOverride
+    }
     this.syncMeta()
+    this.world.chr = CHARS[this.charId]
     this.world.reset(this.pickSeed())
     this.bot = opts.bot ? new Bot() : null
     this.god = opts.stress
@@ -99,14 +108,46 @@ export class Game {
   private loadMeta(): void {
     try {
       const raw = localStorage.getItem('diogen_meta')
-      if (!raw) return
-      const m = JSON.parse(raw) as Partial<Meta>
-      this.meta.w = m.w ?? 0
-      this.meta.hp = m.hp ?? 0
-      this.meta.dmg = m.dmg ?? 0
-      this.meta.spd = m.spd ?? 0
-      this.meta.mag = m.mag ?? 0
+      if (raw) {
+        const m = JSON.parse(raw) as Partial<Meta>
+        this.meta.w = m.w ?? 0
+        this.meta.hp = m.hp ?? 0
+        this.meta.dmg = m.dmg ?? 0
+        this.meta.spd = m.spd ?? 0
+        this.meta.mag = m.mag ?? 0
+        this.meta.chars = (m.chars ?? 1) | 1
+      }
+      const c = Number(localStorage.getItem('diogen_char') ?? '0')
+      if (CHARS[c] && this.charUnlocked(c)) this.charId = c
     } catch { /* начнём с нуля */ }
+  }
+
+  charUnlocked(i: number): boolean {
+    return (this.meta.chars & (1 << i)) !== 0
+  }
+
+  /** Сменить героя на тайтле (dir = ±1). */
+  cycleChar(dir: number): void {
+    this.charId = (this.charId + dir + CHARS.length) % CHARS.length
+    try { localStorage.setItem('diogen_char', String(this.charId)) } catch { /* ок */ }
+    this.audio.ui()
+  }
+
+  /** ENTER/тап на тайтле: либо старт, либо выкуп выбранного героя. */
+  confirmTitle(): void {
+    if (this.charUnlocked(this.charId)) {
+      this.startRun()
+      return
+    }
+    const cost = CHARS[this.charId].cost
+    if (this.meta.w >= cost) {
+      this.meta.w -= cost
+      this.meta.chars |= 1 << this.charId
+      this.saveMeta()
+      this.audio.levelup()
+    } else {
+      this.audio.thud(false)
+    }
   }
 
   private saveMeta(): void {
@@ -196,6 +237,7 @@ export class Game {
 
   startRun(): void {
     this.syncMeta()
+    this.world.chr = CHARS[this.charId]
     this.world.reset(this.pickSeed())
     this.world.bossHpOverride = this.opts.bossHpOverride
     this.bot?.reset()
@@ -229,8 +271,14 @@ export class Game {
 
     switch (this.state) {
       case 'title': {
-        if (this.bot || inp.wasPressed('confirm')) {
+        if (this.bot) {
           this.startRun()
+        } else if (inp.wasPressed('confirm')) {
+          this.confirmTitle()
+        } else if (inp.wasPressed('left')) {
+          this.cycleChar(-1)
+        } else if (inp.wasPressed('right')) {
+          this.cycleChar(1)
         } else if (inp.wasPressed('shop')) {
           this.state = 'shop'
           this.shopSel = 0
@@ -438,7 +486,10 @@ export class Game {
     }
     switch (this.state) {
       case 'title':
-        drawTitle(ctx, this.uiT, this.coarse, this.bestLine)
+        drawTitle(
+          ctx, this.uiT, this.coarse, this.bestLine,
+          CHARS[this.charId], !this.charUnlocked(this.charId), this.meta.w,
+        )
         drawShopButton(ctx, this.meta.w, this.coarse)
         break
       case 'shop':

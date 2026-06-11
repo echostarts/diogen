@@ -1,4 +1,4 @@
-import { CFG, ENEMY_DEF, EK_PLATO, EK_PLATONIST, PC_INK, PC_CREAM, PC_OLIVE, PC_BLOOD, PC_OCHRE } from '../config'
+import { CFG, CHARS, ENEMY_DEF, EK_PLATO, EK_PLATONIST, PC_INK, PC_CREAM, PC_OLIVE, PC_BLOOD, PC_OCHRE, type CharDef } from '../config'
 import type { AudioSys } from '../engine/audio'
 import { RNG } from '../engine/rng'
 import { SpatialHash } from '../engine/shash'
@@ -59,6 +59,8 @@ export class World {
   slowmo = 0
   /** Мета-бонусы из лавки (уровни 0..5). Выставляется Game до reset(). */
   meta = { hp: 0, dmg: 0, spd: 0, mag: 0 }
+  /** Выбранный персонаж. Выставляется Game до reset(). */
+  chr: CharDef = CHARS[0]
 
   lanternAngle = 0
   lanternTick = 0
@@ -141,11 +143,16 @@ export class World {
     this.endState = 0
     const p = this.player
     p.x = 0; p.y = 0; p.vx = 0; p.vy = 0
-    p.maxHp = CFG.player.hp + this.meta.hp * 8
+    p.maxHp = this.chr.hp + this.meta.hp * 8
     p.hp = p.maxHp
     p.invuln = 0; p.facing = 1; p.dist = 0
-    p.charge = 0; p.dashT = 0; p.dashX = 1; p.dashY = 0; p.dead = false
-    this.weapons.lantern = 1; this.weapons.spit = 0; this.weapons.dogs = 0; this.weapons.barrel = 0
+    // у безбочковых уворот заряжен со старта
+    p.charge = this.chr.barrel ? 0 : 1
+    p.dashT = 0; p.dashX = 1; p.dashY = 0; p.dead = false
+    this.weapons.lantern = this.chr.start === 'lantern' ? 1 : 0
+    this.weapons.spit = this.chr.start === 'spit' ? 1 : 0
+    this.weapons.dogs = 0
+    this.weapons.barrel = 0
     const ps = this.pass
     ps.dmg = 0; ps.aspd = 0; ps.area = 0; ps.mspd = 0; ps.magnet = 0
     ps.hp = 0; ps.dog = 0; ps.pierce = 0; ps.ask = 0; ps.soup = 0
@@ -197,7 +204,7 @@ export class World {
   }
 
   moveSpeed(): number {
-    return CFG.player.speed * (1 + 0.1 * this.pass.mspd) * (1 + 0.03 * this.meta.spd)
+    return this.chr.speed * (1 + 0.1 * this.pass.mspd) * (1 + 0.03 * this.meta.spd)
   }
 
   magnetR(): number {

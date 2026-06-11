@@ -1,4 +1,4 @@
-import { PAL, VIEW_H, VIEW_W } from '../config'
+import { PAL, VIEW_H, VIEW_W, type CharDef } from '../config'
 import { drawIcon } from './icons'
 import { defByIndex, roman } from './upgrades'
 import type { World } from './world'
@@ -41,7 +41,13 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
   if (line) ctx.fillText(line, x, yy)
 }
 
-export function drawTitle(ctx: CanvasRenderingContext2D, time: number, coarse: boolean, best: string | null): void {
+// Селектор героя на тайтле (геометрия — и для тапов).
+export const CHAR_BOX = { x: VIEW_W / 2 - 300, y: 392, w: 600, h: 96 }
+
+export function drawTitle(
+  ctx: CanvasRenderingContext2D, time: number, coarse: boolean, best: string | null,
+  chr: CharDef, locked: boolean, wallet: number,
+): void {
   dim(ctx, 0.42)
   meander(ctx, 86, 0.5)
   meander(ctx, VIEW_H - 70, 0.5)
@@ -57,42 +63,64 @@ export function drawTitle(ctx: CanvasRenderingContext2D, time: number, coarse: b
   ctx.fillText('АФИНЫ, 350 ГОД ДО Н. Э. ГРАЖДАНЕ ВОЗМУЩЕНЫ.', VIEW_W / 2, 300)
   ctx.font = '400 17px system-ui, sans-serif'
   ctx.fillStyle = 'rgba(243, 230, 200, 0.85)'
-  ctx.fillText('Вы — Диоген. У вас бочка, фонарь и пять минут до прихода Александра.', VIEW_W / 2, 336)
+  ctx.fillText('Пять минут до прихода Александра. Граждане уже в пути.', VIEW_W / 2, 336)
   if (best) {
     ctx.font = '600 16px system-ui, sans-serif'
     ctx.fillStyle = 'rgba(227, 169, 79, 0.95)'
-    ctx.fillText(best, VIEW_W / 2, 370)
+    ctx.fillText(best, VIEW_W / 2, 366)
   }
 
-  ctx.font = '600 17px system-ui, sans-serif'
+  // --- выбор героя ---
+  const B = CHAR_BOX
+  ctx.fillStyle = 'rgba(33, 21, 16, 0.55)'
+  ctx.beginPath()
+  ctx.roundRect(B.x, B.y, B.w, B.h, 10)
+  ctx.fill()
+  ctx.strokeStyle = locked ? 'rgba(243, 230, 200, 0.35)' : 'rgba(227, 169, 79, 0.75)'
+  ctx.lineWidth = 2
+  ctx.stroke()
+  ctx.font = '700 12px system-ui, sans-serif'
+  ctx.fillStyle = 'rgba(243, 230, 200, 0.6)'
+  ctx.fillText('ГЕРОЙ — ◀ ▶', VIEW_W / 2, B.y + 18)
+  ctx.font = '900 26px system-ui, sans-serif'
+  ctx.fillStyle = locked ? 'rgba(243, 230, 200, 0.5)' : PAL.cream
+  ctx.fillText(chr.name, VIEW_W / 2, B.y + 48)
+  // стрелки
+  ctx.font = '900 30px system-ui, sans-serif'
+  ctx.fillStyle = PAL.ochre
+  ctx.fillText('◀', B.x + 34, B.y + 52)
+  ctx.fillText('▶', B.x + B.w - 34, B.y + 52)
+  ctx.font = '400 14px system-ui, sans-serif'
+  if (locked) {
+    ctx.fillStyle = PAL.ochre
+    ctx.fillText(
+      `Закрыто. Открыть за ${chr.cost} черепков (у вас ${wallet}) — ${coarse ? 'тап по имени' : 'ENTER'}`,
+      VIEW_W / 2, B.y + 74,
+    )
+  } else {
+    ctx.fillStyle = 'rgba(243, 230, 200, 0.85)'
+    ctx.fillText(chr.desc, VIEW_W / 2, B.y + 74)
+  }
+
+  ctx.font = '600 16px system-ui, sans-serif'
   ctx.fillStyle = 'rgba(243, 230, 200, 0.9)'
   const lines = coarse
-    ? [
-        'Палец на левой половине экрана — стик, катит бочку',
-        'Тап справа — рывок (когда найдёте, чем таранить)',
-        'Пауза и звук — кнопки в правом верхнем углу',
-        'Атаки сами по себе. Как и вы.',
-      ]
-    : [
-        'WASD / СТРЕЛКИ — катить бочку',
-        'ПРОБЕЛ — рывок (когда найдёте, чем таранить)',
-        'ESC / P — пауза · M — звук',
-        'Атаки сами по себе. Как и вы.',
-      ]
+    ? ['Палец слева — стик · тап справа — рывок/шаг', 'Атаки сами по себе. Как и вы.']
+    : ['WASD / СТРЕЛКИ — движение · ПРОБЕЛ — рывок/шаг', 'ESC / P — пауза · M — звук · Атаки сами по себе.']
   for (let i = 0; i < lines.length; i++) {
-    ctx.fillText(lines[i], VIEW_W / 2, 422 + i * 30)
+    ctx.fillText(lines[i], VIEW_W / 2, 516 + i * 26)
   }
 
   const pulse = 0.6 + 0.4 * Math.sin(time * 4)
   ctx.globalAlpha = pulse
   ctx.font = '800 28px system-ui, sans-serif'
   ctx.fillStyle = PAL.glow
-  ctx.fillText(coarse ? 'ТАП — НАЧАТЬ' : 'ENTER — НАЧАТЬ', VIEW_W / 2, 580)
+  ctx.fillText(coarse ? 'ТАП — НАЧАТЬ' : 'ENTER — НАЧАТЬ', VIEW_W / 2, 596)
   ctx.globalAlpha = 1
 }
 
-// Кнопка лавки на тайтле (для тапа) и строка кошелька.
-export const SHOP_BTN = { x: VIEW_W / 2 - 110, y: 596, w: 220, h: 42 }
+// Кнопка лавки на тайтле (правый верхний угол) и строка кошелька.
+export const SHOP_BTN = { x: VIEW_W - 252, y: 20, w: 232, h: 44 }
 
 export function drawShopButton(ctx: CanvasRenderingContext2D, wallet: number, coarse: boolean): void {
   const b = SHOP_BTN
@@ -104,12 +132,12 @@ export function drawShopButton(ctx: CanvasRenderingContext2D, wallet: number, co
   ctx.lineWidth = 2
   ctx.stroke()
   ctx.textAlign = 'center'
-  ctx.font = '800 18px system-ui, sans-serif'
+  ctx.font = '800 17px system-ui, sans-serif'
   ctx.fillStyle = PAL.ochre
   ctx.fillText(coarse ? 'ЛАВКА' : 'ЛАВКА — L', b.x + b.w / 2, b.y + 19)
   ctx.font = '600 13px system-ui, sans-serif'
   ctx.fillStyle = 'rgba(243, 230, 200, 0.85)'
-  ctx.fillText('черепков: ' + wallet, b.x + b.w / 2, b.y + 35)
+  ctx.fillText('черепков: ' + wallet, b.x + b.w / 2, b.y + 36)
 }
 
 // Геометрия рядов лавки — общая для отрисовки и тач-попаданий.

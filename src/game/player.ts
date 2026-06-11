@@ -6,10 +6,14 @@ export function updatePlayer(w: World, dt: number, mx: number, my: number, dashP
   if (p.dead) return
   const speed = w.moveSpeed()
   const B = CFG.barrel
+  // рывок доступен с бочкой-тараном или как врождённый уворот (Гиппархия)
+  const dodge = !w.chr.barrel && w.chr.dodgeCd > 0
+  const canDash = w.weapons.barrel > 0 || dodge
 
-  if (dashPressed && w.weapons.barrel > 0 && p.charge >= 1 && p.dashT <= 0) {
-    p.dashT = B.dashT
+  if (dashPressed && canDash && p.charge >= 1 && p.dashT <= 0) {
+    p.dashT = dodge ? 0.22 : B.dashT
     p.charge = 0
+    if (dodge) p.invuln = Math.max(p.invuln, 0.35) // шаг в сторону: краткая неуязвимость
     if (Math.hypot(mx, my) > 0.1) {
       const l = Math.hypot(mx, my)
       p.dashX = mx / l
@@ -39,8 +43,10 @@ export function updatePlayer(w: World, dt: number, mx: number, my: number, dashP
   p.dist += v * dt
   if (Math.abs(p.vx) > 1) p.facing = p.vx > 0 ? 1 : -1
 
-  // заряд рывка копится при движении (когда бочка-таран открыта)
-  if (w.weapons.barrel > 0 && p.dashT <= 0 && v > speed * 0.4) {
+  // заряд рывка: у бочки копится при движении, уворот перезаряжается сам
+  if (dodge) {
+    if (p.dashT <= 0) p.charge = Math.min(1, p.charge + dt / w.chr.dodgeCd)
+  } else if (w.weapons.barrel > 0 && p.dashT <= 0 && v > speed * 0.4) {
     const chargeTime = B.charge * (1 - 0.12 * (w.weapons.barrel - 1)) / (w.evoPithos ? CFG.pithos.chargeMul : 1)
     p.charge = Math.min(1, p.charge + dt / chargeTime)
   }
