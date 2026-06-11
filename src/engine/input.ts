@@ -29,8 +29,16 @@ export class Input {
   private gpPrev = 0 // битовая маска кнопок геймпада прошлого опроса
   moveX = 0
   moveY = 0
+  /** Вектор виртуального стика (тач) — пишется слоем управления в main.ts. */
+  touchX = 0
+  touchY = 0
   /** Срабатывает на любой клавише — нужно, чтобы разбудить WebAudio. */
   onGesture: (() => void) | null = null
+
+  /** Виртуальное нажатие действия (тач-кнопки, экранные зоны). */
+  inject(a: Action): void {
+    this.edge.add(a)
+  }
 
   attach(): void {
     window.addEventListener('keydown', (e) => {
@@ -85,8 +93,8 @@ export class Input {
         break
       }
     }
-    let x = gx + (this.held.has('right') ? 1 : 0) - (this.held.has('left') ? 1 : 0)
-    let y = gy + (this.held.has('down') ? 1 : 0) - (this.held.has('up') ? 1 : 0)
+    let x = gx + this.touchX + (this.held.has('right') ? 1 : 0) - (this.held.has('left') ? 1 : 0)
+    let y = gy + this.touchY + (this.held.has('down') ? 1 : 0) - (this.held.has('up') ? 1 : 0)
     const len = Math.hypot(x, y)
     if (len > 1) { x /= len; y /= len }
     this.moveX = x

@@ -275,15 +275,31 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
     ctx.drawImage(spr.glow, wx(lpos.x) - R, wy(lpos.y) - R, R * 2, R * 2)
     ctx.globalAlpha = 1
     ctx.globalCompositeOperation = 'source-over'
-    // сам фонарь
-    const lx = wx(lpos.x)
-    const ly = wy(lpos.y)
-    ctx.fillStyle = PAL.ink
-    ctx.fillRect(lx - 4 * s, ly - 6 * s, 8 * s, 10 * s)
-    ctx.fillStyle = PAL.glow
-    ctx.fillRect(lx - 2.4 * s, ly - 4 * s, 4.8 * s, 6 * s)
-    ctx.fillStyle = PAL.ink
-    ctx.fillRect(lx - 1.4 * s, ly - 9 * s, 2.8 * s, 3 * s)
+    if (w.sun) {
+      // эволюция: корона лучей вокруг бочки
+      ctx.strokeStyle = 'rgba(255, 217, 160, 0.5)'
+      ctx.lineWidth = 2.5
+      const spin = w.t * 0.35
+      for (let i = 0; i < 10; i++) {
+        const a = spin + (i / 10) * Math.PI * 2
+        const r0 = (lpos.r - 7) * s
+        const r1 = (lpos.r + 6) * s
+        ctx.beginPath()
+        ctx.moveTo(wx(lpos.x) + Math.cos(a) * r0, wy(lpos.y) + Math.sin(a) * r0)
+        ctx.lineTo(wx(lpos.x) + Math.cos(a) * r1, wy(lpos.y) + Math.sin(a) * r1)
+        ctx.stroke()
+      }
+    } else {
+      // сам фонарь
+      const lx = wx(lpos.x)
+      const ly = wy(lpos.y)
+      ctx.fillStyle = PAL.ink
+      ctx.fillRect(lx - 4 * s, ly - 6 * s, 8 * s, 10 * s)
+      ctx.fillStyle = PAL.glow
+      ctx.fillRect(lx - 2.4 * s, ly - 4 * s, 4.8 * s, 6 * s)
+      ctx.fillStyle = PAL.ink
+      ctx.fillRect(lx - 1.4 * s, ly - 9 * s, 2.8 * s, 3 * s)
+    }
     // граница круга света — чтобы читалась зона урона
     ctx.strokeStyle = 'rgba(255, 217, 160, 0.35)'
     ctx.lineWidth = 1.5

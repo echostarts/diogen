@@ -31,6 +31,7 @@ export const EK_MERCHANT = 0
 export const EK_GUARD = 1
 export const EK_PLATONIST = 2
 export const EK_SOPHIST = 3
+export const EK_PLATO = 4 // мини-босс на 2:30
 
 export interface EnemyDef {
   hp: number
@@ -45,6 +46,7 @@ export const ENEMY_DEF: EnemyDef[] = [
   { hp: 36, speed: 60, r: 12, dmg: 10, xp: 1 },  // стражник
   { hp: 120, speed: 33, r: 17, dmg: 15, xp: 1 }, // платоник: танк
   { hp: 28, speed: 58, r: 11, dmg: 7, xp: 1 },   // софист: дистанция + снаряды
+  { hp: 360, speed: 27, r: 26, dmg: 20, xp: 0 }, // сам Платон: мини-босс, зовёт платоников
 ]
 
 export const CFG = {
@@ -78,6 +80,12 @@ export const CFG = {
     ringDist: 730,
     afterBossMul: 0.15,
   },
+
+  // Мини-босс Платон.
+  mini: { at: 150, summonCd: 8, summonN: 3, gems: 12 },
+
+  // Эволюция фонаря «Солнце»: свет от самой бочки.
+  sun: { dmgMul: 1.6, radiusMul: 1.55, intMul: 0.85 },
 
   boss: {
     hp: 3800, r: 30, speed: 56, enrageSpeed: 78,

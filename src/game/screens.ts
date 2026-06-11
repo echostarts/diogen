@@ -41,7 +41,7 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
   if (line) ctx.fillText(line, x, yy)
 }
 
-export function drawTitle(ctx: CanvasRenderingContext2D, time: number): void {
+export function drawTitle(ctx: CanvasRenderingContext2D, time: number, coarse: boolean, best: string | null): void {
   dim(ctx, 0.42)
   meander(ctx, 86, 0.5)
   meander(ctx, VIEW_H - 70, 0.5)
@@ -58,28 +58,50 @@ export function drawTitle(ctx: CanvasRenderingContext2D, time: number): void {
   ctx.font = '400 17px system-ui, sans-serif'
   ctx.fillStyle = 'rgba(243, 230, 200, 0.85)'
   ctx.fillText('Вы — Диоген. У вас бочка, фонарь и пять минут до прихода Александра.', VIEW_W / 2, 336)
+  if (best) {
+    ctx.font = '600 16px system-ui, sans-serif'
+    ctx.fillStyle = 'rgba(227, 169, 79, 0.95)'
+    ctx.fillText(best, VIEW_W / 2, 370)
+  }
 
   ctx.font = '600 17px system-ui, sans-serif'
   ctx.fillStyle = 'rgba(243, 230, 200, 0.9)'
-  const lines = [
-    'WASD / СТРЕЛКИ — катить бочку',
-    'ПРОБЕЛ — рывок (когда найдёте, чем таранить)',
-    'ESC / P — пауза · M — звук',
-    'Атаки сами по себе. Как и вы.',
-  ]
+  const lines = coarse
+    ? [
+        'Палец на левой половине экрана — стик, катит бочку',
+        'Тап справа — рывок (когда найдёте, чем таранить)',
+        'Пауза и звук — кнопки в правом верхнем углу',
+        'Атаки сами по себе. Как и вы.',
+      ]
+    : [
+        'WASD / СТРЕЛКИ — катить бочку',
+        'ПРОБЕЛ — рывок (когда найдёте, чем таранить)',
+        'ESC / P — пауза · M — звук',
+        'Атаки сами по себе. Как и вы.',
+      ]
   for (let i = 0; i < lines.length; i++) {
-    ctx.fillText(lines[i], VIEW_W / 2, 420 + i * 30)
+    ctx.fillText(lines[i], VIEW_W / 2, 422 + i * 30)
   }
 
   const pulse = 0.6 + 0.4 * Math.sin(time * 4)
   ctx.globalAlpha = pulse
   ctx.font = '800 28px system-ui, sans-serif'
   ctx.fillStyle = PAL.glow
-  ctx.fillText('ENTER — НАЧАТЬ', VIEW_W / 2, 580)
+  ctx.fillText(coarse ? 'ТАП — НАЧАТЬ' : 'ENTER — НАЧАТЬ', VIEW_W / 2, 580)
   ctx.globalAlpha = 1
 }
 
-export function drawLevelup(ctx: CanvasRenderingContext2D, w: World, choices: number[], sel: number): void {
+// Геометрия карточек левел-апа — общая для отрисовки и тач-попаданий.
+export const CARD_W = 330
+export const CARD_H = 230
+export const CARD_GAP = 28
+export const CARD_Y = 230
+
+export function cardX(i: number): number {
+  return (VIEW_W - (CARD_W * 3 + CARD_GAP * 2)) / 2 + i * (CARD_W + CARD_GAP)
+}
+
+export function drawLevelup(ctx: CanvasRenderingContext2D, w: World, choices: number[], sel: number, coarse: boolean): void {
   dim(ctx, 0.6)
   ctx.textAlign = 'center'
   ctx.font = '900 40px system-ui, sans-serif'
@@ -89,15 +111,12 @@ export function drawLevelup(ctx: CanvasRenderingContext2D, w: World, choices: nu
   ctx.fillStyle = PAL.ochre
   ctx.fillText('УРОВЕНЬ ' + w.level + ' — выберите одно', VIEW_W / 2, 182)
 
-  const cw = 330
-  const ch = 230
-  const gap = 28
-  const total = cw * 3 + gap * 2
-  const x0 = (VIEW_W - total) / 2
-  const y0 = 230
+  const cw = CARD_W
+  const ch = CARD_H
+  const y0 = CARD_Y
   for (let i = 0; i < 3; i++) {
     const def = defByIndex(choices[i])
-    const x = x0 + i * (cw + gap)
+    const x = cardX(i)
     const isSel = i === sel
     ctx.save()
     if (isSel) {
@@ -140,7 +159,7 @@ export function drawLevelup(ctx: CanvasRenderingContext2D, w: World, choices: nu
   ctx.textAlign = 'center'
   ctx.font = '600 16px system-ui, sans-serif'
   ctx.fillStyle = 'rgba(243, 230, 200, 0.7)'
-  ctx.fillText('←  → и ENTER, или 1 / 2 / 3', VIEW_W / 2, y0 + ch + 46)
+  ctx.fillText(coarse ? 'тап по карте — взять' : '←  → и ENTER, или 1 / 2 / 3', VIEW_W / 2, y0 + ch + 46)
 }
 
 export function drawPause(ctx: CanvasRenderingContext2D, statLines: string[]): void {
@@ -162,7 +181,7 @@ export function drawPause(ctx: CanvasRenderingContext2D, statLines: string[]): v
   ctx.fillText('ESC — ПРОДОЛЖИТЬ', VIEW_W / 2, 560)
 }
 
-export function drawEnd(ctx: CanvasRenderingContext2D, win: boolean, statLines: string[], time: number): void {
+export function drawEnd(ctx: CanvasRenderingContext2D, win: boolean, statLines: string[], time: number, coarse: boolean): void {
   dim(ctx, win ? 0.55 : 0.68)
   meander(ctx, 72, 0.35)
   ctx.textAlign = 'center'
@@ -200,6 +219,6 @@ export function drawEnd(ctx: CanvasRenderingContext2D, win: boolean, statLines: 
   ctx.globalAlpha = pulse
   ctx.font = '800 26px system-ui, sans-serif'
   ctx.fillStyle = PAL.glow
-  ctx.fillText('R / ENTER — ЕЩЁ РАЗ', VIEW_W / 2, 622)
+  ctx.fillText(coarse ? 'ТАП — ЕЩЁ РАЗ' : 'R / ENTER — ЕЩЁ РАЗ', VIEW_W / 2, 622)
   ctx.globalAlpha = 1
 }

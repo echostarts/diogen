@@ -1,4 +1,4 @@
-import { CFG, ENEMY_DEF, EK_PLATONIST, PC_INK, PC_CREAM, PC_OLIVE, PC_BLOOD } from '../config'
+import { CFG, ENEMY_DEF, EK_PLATO, EK_PLATONIST, PC_INK, PC_CREAM, PC_OLIVE, PC_BLOOD, PC_OCHRE } from '../config'
 import type { AudioSys } from '../engine/audio'
 import { RNG } from '../engine/rng'
 import { SpatialHash } from '../engine/shash'
@@ -49,6 +49,9 @@ export class World {
   // Уровни оружия (0 — не открыто) и пассивок.
   weapons = { lantern: 1, spit: 0, dogs: 0, barrel: 0 }
   pass = { dmg: 0, aspd: 0, area: 0, mspd: 0, magnet: 0, hp: 0, dog: 0, pierce: 0, ask: 0, soup: 0 }
+  /** Эволюция фонаря: свет идёт от самой бочки. */
+  sun = false
+  miniSpawned = false
 
   lanternAngle = 0
   lanternTick = 0
@@ -138,6 +141,8 @@ export class World {
     const ps = this.pass
     ps.dmg = 0; ps.aspd = 0; ps.area = 0; ps.mspd = 0; ps.magnet = 0
     ps.hp = 0; ps.dog = 0; ps.pierce = 0; ps.ask = 0; ps.soup = 0
+    this.sun = false
+    this.miniSpawned = false
     this.lanternAngle = 0
     this.lanternTick = 0.3
     this.lanternPulse = 0
@@ -322,6 +327,20 @@ export class World {
     e.dying = true
     if (dropGem) {
       this.kills++
+      if (e.kind === EK_PLATO) {
+        // сам Платон: сноп оливок кольцом и реверанс
+        for (let k = 0; k < CFG.mini.gems; k++) {
+          const a = (k / CFG.mini.gems) * Math.PI * 2
+          this.spawnGem(e.x + Math.cos(a) * 56, e.y + Math.sin(a) * 56, 1)
+        }
+        this.setCaption('ИДЕЯ ПЛАТОНА ОКАЗАЛАСЬ СМЕРТНОЙ', 3)
+        this.addTrauma(0.45)
+        this.addHitstop(0.06)
+        this.burst(e.x, e.y, 22, PC_INK, 190, 3.5, 0.7)
+        this.burst(e.x, e.y, 10, PC_OCHRE, 150, 2.5, 0.6)
+        this.audio.boom()
+        return
+      }
       // оливка катится чуть в сторону бочки — магниту проще дотянуться
       const gx = e.x + (this.player.x - e.x) * 0.3
       const gy = e.y + (this.player.y - e.y) * 0.3

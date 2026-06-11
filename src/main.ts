@@ -2,6 +2,7 @@ import { STEP, VIEW_H, VIEW_W } from './config'
 import { AudioSys } from './engine/audio'
 import { Input } from './engine/input'
 import { Game } from './game/game'
+import { CARD_H, CARD_W, CARD_Y, cardX } from './game/screens'
 
 interface Diag {
   state: string
@@ -52,6 +53,11 @@ const audio = new AudioSys()
 input.onGesture = () => audio.ensure()
 
 const game = new Game(input, audio, { bot: botOn, stress, seed, bossHpOverride })
+game.coarse = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches
+// ?debug=1 — доступ к игре из консоли (для отладки и скриптовых проверок)
+if (params.get('debug') === '1') {
+  ;(window as unknown as { __game: Game }).__game = game
+}
 
 // --- размеры и letterbox ---
 let scale = 1
@@ -84,17 +90,101 @@ function resize(): void {
 window.addEventListener('resize', resize)
 resize()
 
-// клик: жест для звука + кнопка mute
+// --- указатель: мышь и тач. Стик слева, рывок справа, кнопки и карты — тапом ---
+const stick = game.stick
+let stickId = -1
+
+function toViewX(clientX: number): number {
+  const dpr = Math.min(1.5, window.devicePixelRatio || 1)
+  return (clientX * dpr - ox) / scale
+}
+function toViewY(clientY: number): number {
+  const dpr = Math.min(1.5, window.devicePixelRatio || 1)
+  return (clientY * dpr - oy) / scale
+}
+function inRect(vx: number, vy: number, r: { x: number; y: number; w: number; h: number }): boolean {
+  return vx >= r.x && vx <= r.x + r.w && vy >= r.y && vy <= r.y + r.h
+}
+
 canvas.addEventListener('pointerdown', (e) => {
   audio.ensure()
-  const dpr = Math.min(1.5, window.devicePixelRatio || 1)
-  const vx = (e.clientX * dpr - ox) / scale
-  const vy = (e.clientY * dpr - oy) / scale
-  const mr = game.hud.muteRect
-  if (vx >= mr.x && vx <= mr.x + mr.w && vy >= mr.y && vy <= mr.y + mr.h) {
+  const vx = toViewX(e.clientX)
+  const vy = toViewY(e.clientY)
+  const isTouch = e.pointerType !== 'mouse'
+  if (isTouch) game.coarse = true
+
+  // кнопки HUD работают всегда
+  if (inRect(vx, vy, game.hud.muteRect)) {
     audio.toggleMute()
+    return
+  }
+  switch (game.state) {
+    case 'run': {
+      if (inRect(vx, vy, game.hud.pauseRect)) {
+        input.inject('pause')
+        return
+      }
+      if (!isTouch) return
+      if (vx < VIEW_W * 0.56) {
+        // виртуальный стик с центром в точке касания
+        stickId = e.pointerId
+        stick.active = true
+        stick.ox = vx
+        stick.oy = vy
+        stick.dx = 0
+        stick.dy = 0
+      } else {
+        input.inject('dash')
+      }
+      break
+    }
+    case 'levelup': {
+      for (let i = 0; i < 3; i++) {
+        if (vx >= cardX(i) && vx <= cardX(i) + CARD_W && vy >= CARD_Y && vy <= CARD_Y + CARD_H) {
+          input.inject(i === 0 ? 'opt1' : i === 1 ? 'opt2' : 'opt3')
+          return
+        }
+      }
+      break
+    }
+    case 'title':
+      input.inject('confirm')
+      break
+    case 'pause':
+      input.inject('pause')
+      break
+    case 'over':
+    case 'win':
+      input.inject('restart')
+      break
   }
 })
+
+canvas.addEventListener('pointermove', (e) => {
+  if (e.pointerId !== stickId || !stick.active) return
+  const vx = toViewX(e.clientX)
+  const vy = toViewY(e.clientY)
+  let dx = (vx - stick.ox) / 46
+  let dy = (vy - stick.oy) / 46
+  const len = Math.hypot(dx, dy)
+  if (len > 1) { dx /= len; dy /= len }
+  stick.dx = dx
+  stick.dy = dy
+  input.touchX = dx
+  input.touchY = dy
+})
+
+function endStick(e: PointerEvent): void {
+  if (e.pointerId !== stickId) return
+  stickId = -1
+  stick.active = false
+  stick.dx = 0
+  stick.dy = 0
+  input.touchX = 0
+  input.touchY = 0
+}
+canvas.addEventListener('pointerup', endStick)
+canvas.addEventListener('pointercancel', endStick)
 
 // автопауза при сворачивании (кроме режима бота — ему виднее)
 document.addEventListener('visibilitychange', () => {

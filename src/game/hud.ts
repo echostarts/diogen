@@ -5,9 +5,18 @@ import type { World } from './world'
 const WEAPON_IDS = ['w_lantern', 'w_spit', 'w_dogs', 'w_barrel'] as const
 const WEAPON_KEYS = ['lantern', 'spit', 'dogs', 'barrel'] as const
 
+export interface StickState {
+  active: boolean
+  ox: number
+  oy: number
+  dx: number
+  dy: number
+}
+
 // HUD кэширует все строки, чтобы не плодить аллокации в кадре.
 export class Hud {
   readonly muteRect = { x: VIEW_W - 46, y: 56, w: 34, h: 30 }
+  readonly pauseRect = { x: VIEW_W - 88, y: 56, w: 34, h: 30 }
   private lastSec = -1
   private timeStr = '0:00'
   private lastKills = -1
@@ -18,7 +27,7 @@ export class Hud {
   private levelStr = 'УР 1'
 
   /** Рисует HUD. Транформ уже выставлен в view-координаты (1280×720). */
-  draw(ctx: CanvasRenderingContext2D, w: World, muted: boolean): void {
+  draw(ctx: CanvasRenderingContext2D, w: World, muted: boolean, stick: StickState | null, coarse: boolean): void {
     const p = w.player
 
     // --- XP-бар во всю ширину ---
@@ -139,7 +148,7 @@ export class Hud {
       ctx.strokeStyle = 'rgba(243, 230, 200, 0.5)'
       ctx.lineWidth = 1.5
       ctx.stroke()
-      drawIcon(ctx, WEAPON_IDS[i], x + 22, y + 20, 26)
+      drawIcon(ctx, i === 0 && w.sun ? 'w_sun' : WEAPON_IDS[i], x + 22, y + 20, 26)
       // пипсы уровня
       for (let k = 0; k < 5; k++) {
         const px = x + 7 + k * 8
@@ -147,6 +156,29 @@ export class Hud {
         ctx.fillRect(px, y + 37, 5, 3)
       }
       slot++
+    }
+
+    // --- кнопка паузы (для тача, но кликается и мышью) ---
+    const pr = this.pauseRect
+    ctx.fillStyle = 'rgba(33, 21, 16, 0.55)'
+    ctx.beginPath()
+    ctx.roundRect(pr.x, pr.y, pr.w, pr.h, 6)
+    ctx.fill()
+    ctx.fillStyle = PAL.cream
+    ctx.fillRect(pr.x + 11, pr.y + 8, 4, 14)
+    ctx.fillRect(pr.x + 19, pr.y + 8, 4, 14)
+
+    // --- виртуальный стик ---
+    if (stick && stick.active) {
+      ctx.strokeStyle = 'rgba(243, 230, 200, 0.35)'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.arc(stick.ox, stick.oy, 46, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.fillStyle = 'rgba(243, 230, 200, 0.45)'
+      ctx.beginPath()
+      ctx.arc(stick.ox + stick.dx * 46, stick.oy + stick.dy * 46, 18, 0, Math.PI * 2)
+      ctx.fill()
     }
 
     // --- заряд рывка ---
@@ -157,7 +189,7 @@ export class Hud {
       ctx.textAlign = 'left'
       ctx.font = '700 11px system-ui, sans-serif'
       ctx.fillStyle = 'rgba(243, 230, 200, 0.75)'
-      ctx.fillText('РЫВОК — ПРОБЕЛ', bx, by - 14)
+      ctx.fillText(coarse ? 'РЫВОК — ТАП СПРАВА' : 'РЫВОК — ПРОБЕЛ', bx, by - 14)
       ctx.fillStyle = 'rgba(33, 21, 16, 0.7)'
       ctx.fillRect(bx - 2, by - 2, bw + 4, 14)
       const full = p.charge >= 1

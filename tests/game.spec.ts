@@ -36,8 +36,8 @@ const diag = (page: Page) => page.evaluate(() => window.__diag)
 // ВНИМАНИЕ: сиды (?seed=) пришпилены к текущему балансу. Любая правка
 // логики/баланса меняет раны — тогда сиды надо переподобрать
 // через `node scripts/calibrate.mjs "1 2 3 4 5 6 7 8" 8`.
-const SEED_WIN = 5   // доходит до босса и побеждает
-const SEED_DIE = 1   // умирает до босса (~3:40)
+const SEED_WIN = 6   // доходит до босса и побеждает (~6:00)
+const SEED_DIE = 1   // умирает до босса (~3:45)
 
 test('страница грузится: канвас, тайтл, ноль ошибок консоли', async ({ page }) => {
   const errors = trackErrors(page)
@@ -172,6 +172,30 @@ test('пауза на Esc и продолжение', async ({ page }) => {
   await page.waitForTimeout(300)
   expect((await diag(page)).state).toBe('run')
   expect(errors).toEqual([])
+})
+
+test.describe('тач-управление', () => {
+  test.use({ hasTouch: true })
+
+  test('тап стартует игру, виртуальный стик двигает игрока', async ({ page }) => {
+    const errors = trackErrors(page)
+    await page.goto(`/?seed=${SEED_WIN}`)
+    await page.waitForTimeout(600)
+    await page.touchscreen.tap(640, 360)
+    await page.waitForTimeout(400)
+    expect((await diag(page)).state).toBe('run')
+    const before = await diag(page)
+    // стик: палец сел слева и потянул вправо
+    const canvas = page.locator('canvas')
+    await canvas.dispatchEvent('pointerdown', { pointerId: 7, pointerType: 'touch', clientX: 300, clientY: 400, isPrimary: true })
+    await canvas.dispatchEvent('pointermove', { pointerId: 7, pointerType: 'touch', clientX: 390, clientY: 400, isPrimary: true })
+    await page.waitForTimeout(1000)
+    await canvas.dispatchEvent('pointerup', { pointerId: 7, pointerType: 'touch', clientX: 390, clientY: 400, isPrimary: true })
+    await page.waitForTimeout(200)
+    const after = await diag(page)
+    expect(after.px - before.px).toBeGreaterThan(60)
+    expect(errors).toEqual([])
+  })
 })
 
 test('быстрая победа через ?bosshp: экран победы работает', async ({ page }) => {

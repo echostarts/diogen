@@ -30,11 +30,16 @@ function nearestTarget(w: World, x: number, y: number, maxD: number, needDogCd: 
 function lanternStats(w: World): { dmg: number; radius: number; orbit: number } {
   const lvl = w.weapons.lantern
   const L = CFG.lantern
-  return {
-    dmg: L.dmg * (1 + 0.3 * (lvl - 1)) * w.dmgMult(),
-    radius: L.radius * (1 + 0.08 * (lvl - 1)) * w.areaMult(),
-    orbit: L.orbit * Math.sqrt(w.areaMult()),
+  let dmg = L.dmg * (1 + 0.3 * (lvl - 1)) * w.dmgMult()
+  let radius = L.radius * (1 + 0.08 * (lvl - 1)) * w.areaMult()
+  let orbit = L.orbit * Math.sqrt(w.areaMult())
+  if (w.sun) {
+    // эволюция: свет идёт от самой бочки — шире и жарче
+    dmg *= CFG.sun.dmgMul
+    radius *= CFG.sun.radiusMul
+    orbit = 0
   }
+  return { dmg, radius, orbit }
 }
 
 export function lanternCenter(w: World, out: { x: number; y: number; r: number }): void {
@@ -52,7 +57,7 @@ function updateLantern(w: World, dt: number): void {
   if (w.lanternPulse > 0) w.lanternPulse -= dt
   w.lanternTick -= dt
   if (w.lanternTick > 0) return
-  w.lanternTick = CFG.lantern.int * w.intMult()
+  w.lanternTick = CFG.lantern.int * w.intMult() * (w.sun ? CFG.sun.intMul : 1)
   w.lanternPulse = 0.16
 
   const s = lanternStats(w)

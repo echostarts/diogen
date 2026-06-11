@@ -240,6 +240,33 @@ const drawDog: DrawFn = (c, ink, ochre, cream) => {
   c.fillRect(7.4, -3.2, 1, 1)
 }
 
+// Сам Платон: платоник в полтора роста, с лавром и свитком «Государства».
+const drawPlato: DrawFn = (c, ink, ochre, cream) => {
+  c.save()
+  c.scale(1.55, 1.55)
+  drawPlatonist(c, ink, ochre, cream)
+  c.restore()
+  // лавровый венок
+  c.strokeStyle = ochre
+  c.lineWidth = 2.2
+  c.beginPath()
+  c.arc(0, -20, 8.4, Math.PI * 0.95, Math.PI * 2.05)
+  c.stroke()
+  c.fillStyle = ochre
+  for (let i = 0; i < 5; i++) {
+    const a = Math.PI * (1 + i * 0.25)
+    c.beginPath()
+    c.ellipse(Math.cos(a) * 8.4, -20 + Math.sin(a) * 8.4, 2.6, 1.4, a + Math.PI / 2, 0, Math.PI * 2)
+    c.fill()
+  }
+  // свиток под мышкой
+  c.fillStyle = cream
+  c.fillRect(-16, 2, 11, 4.6)
+  c.fillStyle = ochre
+  c.fillRect(-16, 2, 2.2, 4.6)
+  c.fillRect(-7.2, 2, 2.2, 4.6)
+}
+
 // Александр: гребень, плащ, меч. Крупный.
 const drawBoss: DrawFn = (c, ink, ochre, cream) => {
   // плащ за спиной
@@ -431,6 +458,7 @@ export function buildSprites(ctx: CanvasRenderingContext2D): Sprites {
       sprite(34, 38, drawGuard),
       sprite(46, 46, drawPlatonist),
       sprite(34, 34, drawSophist),
+      sprite(72, 72, drawPlato),
     ],
     boss: sprite(76, 80, drawBoss),
     dog: sprite(28, 22, drawDog),

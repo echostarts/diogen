@@ -26,6 +26,28 @@ export function drawIcon(ctx: CanvasRenderingContext2D, id: string, cx: number, 
       ctx.fillRect(-1.6, -10, 3.2, 4)
       break
     }
+    case 'w_sun': {
+      ctx.fillStyle = glow
+      ctx.globalAlpha = 0.3
+      ctx.beginPath()
+      ctx.arc(0, 0, 11.5, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = 1
+      ctx.fillStyle = ochre
+      ctx.beginPath()
+      ctx.arc(0, 0, 6, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.strokeStyle = cream
+      ctx.lineWidth = 2
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2
+        ctx.beginPath()
+        ctx.moveTo(Math.cos(a) * 8.2, Math.sin(a) * 8.2)
+        ctx.lineTo(Math.cos(a) * 11.5, Math.sin(a) * 11.5)
+        ctx.stroke()
+      }
+      break
+    }
     case 'w_spit': {
       ctx.fillStyle = cream
       ctx.beginPath()

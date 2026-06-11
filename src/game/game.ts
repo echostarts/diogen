@@ -37,6 +37,11 @@ export class Game {
   statLines: string[] = []
   uiT = 0
   god = false
+  /** Тач-устройство: меняет подсказки и показывает экранные кнопки. */
+  coarse = false
+  /** Состояние виртуального стика — пишет main.ts, рисует HUD. */
+  stick = { active: false, ox: 0, oy: 0, dx: 0, dy: 0 }
+  private bestLine: string | null = null
   private readonly opts: GameOpts
 
   constructor(input: Input, audio: AudioSys, opts: GameOpts) {
@@ -47,6 +52,40 @@ export class Game {
     this.world.reset(this.pickSeed())
     this.bot = opts.bot ? new Bot() : null
     this.god = opts.stress
+    this.loadBest()
+  }
+
+  // --- лучший ран (localStorage) ---
+
+  private loadBest(): void {
+    try {
+      const raw = localStorage.getItem('diogen_best')
+      if (!raw) return
+      const b = JSON.parse(raw) as { win: boolean; time: number; kills: number }
+      this.bestLine = this.formatBest(b)
+    } catch { /* нет — и не надо */ }
+  }
+
+  private formatBest(b: { win: boolean; time: number; kills: number }): string {
+    const sec = Math.floor(b.time)
+    const t = Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0')
+    return (b.win ? 'ЛУЧШИЙ ЗАХОД: ПОБЕДА ЗА ' : 'ЛУЧШИЙ ЗАХОД: ') + t + ' · ПЕРЕУБЕЖДЕНО ' + b.kills
+  }
+
+  private saveBest(win: boolean): void {
+    if (this.bot) return // достижения ботов не считаются
+    const cur = { win, time: this.world.t, kills: this.world.kills }
+    try {
+      const raw = localStorage.getItem('diogen_best')
+      if (raw) {
+        const old = JSON.parse(raw) as { win: boolean; time: number; kills: number }
+        // победа важнее поражения; среди побед — быстрее, среди поражений — дольше
+        const better = cur.win !== old.win ? cur.win : cur.win ? cur.time < old.time : cur.time > old.time
+        if (!better) return
+      }
+      localStorage.setItem('diogen_best', JSON.stringify(cur))
+      this.bestLine = this.formatBest(cur)
+    } catch { /* приватный режим */ }
   }
 
   private pickSeed(): number {
@@ -111,6 +150,7 @@ export class Game {
         if (w.endState > 0 && w.endTimer <= 0) {
           this.state = w.endState === 2 ? 'win' : 'over'
           this.buildStats(false)
+          this.saveBest(w.endState === 2)
         } else if (w.endState === 0 && w.pendingLevels > 0) {
           this.openLevelup()
         }
@@ -241,22 +281,24 @@ export class Game {
     drawWorld(ctx, this.world, this.sprites, s, ox, oy)
     ctx.setTransform(s, 0, 0, s, ox, oy)
     if (vignette) ctx.drawImage(vignette, 0, 0, VIEW_W, VIEW_H)
-    if (this.state !== 'title') this.hud.draw(ctx, this.world, this.audio.muted)
+    if (this.state !== 'title') {
+      this.hud.draw(ctx, this.world, this.audio.muted, this.state === 'run' ? this.stick : null, this.coarse)
+    }
     switch (this.state) {
       case 'title':
-        drawTitle(ctx, this.uiT)
+        drawTitle(ctx, this.uiT, this.coarse, this.bestLine)
         break
       case 'levelup':
-        drawLevelup(ctx, this.world, this.choices, this.sel)
+        drawLevelup(ctx, this.world, this.choices, this.sel, this.coarse)
         break
       case 'pause':
         drawPause(ctx, this.statLines)
         break
       case 'over':
-        drawEnd(ctx, false, this.statLines, this.uiT)
+        drawEnd(ctx, false, this.statLines, this.uiT, this.coarse)
         break
       case 'win':
-        drawEnd(ctx, true, this.statLines, this.uiT)
+        drawEnd(ctx, true, this.statLines, this.uiT, this.coarse)
         break
       case 'run':
         break

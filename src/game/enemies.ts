@@ -1,4 +1,4 @@
-import { CFG, EK_GUARD, EK_MERCHANT, EK_PLATONIST, EK_SOPHIST } from '../config'
+import { CFG, EK_GUARD, EK_MERCHANT, EK_PLATO, EK_PLATONIST, EK_SOPHIST, PC_CREAM } from '../config'
 import type { World } from './world'
 
 // Веса спавна по фазам рана: [торговец, стражник, платоник, софист]
@@ -52,6 +52,17 @@ export function spawnerTick(w: World, dt: number): void {
     if (w.enemyCount >= w.enemies.length - 8) continue
     spawnAt(w, pickKind(w), w.rng.next() * Math.PI * 2, CFG.spawn.ringDist * (0.96 + w.rng.next() * 0.12))
   }
+  // мини-босс: сам Платон приходит на 2:30
+  if (!w.miniSpawned && w.t >= CFG.mini.at && !w.bossSpawned) {
+    w.miniSpawned = true
+    const a = w.rng.next() * Math.PI * 2
+    const e = w.spawnEnemy(EK_PLATO, w.player.x + Math.cos(a) * 620, w.player.y + Math.sin(a) * 620)
+    if (e) {
+      e.fire = 3 // первый призыв — через три секунды
+      w.setCaption('ПЛАТОН ПРИШЁЛ ЗА СВОИМ ПЕТУХОМ', 3.5)
+      w.audio.thud(true)
+    }
+  }
   // волны-кольца по расписанию
   const bursts = CFG.spawn.bursts
   if (!w.bossSpawned && w.burstIdx < bursts.length && w.t >= bursts[w.burstIdx]) {
@@ -103,6 +114,22 @@ export function updateEnemies(w: World, dt: number): void {
       const wob = Math.sin(w.t * 3.1 + e.seed * 6.28) * 0.45
       sx = dx - dy * wob
       sy = dy + dx * wob
+    } else if (e.kind === EK_PLATO) {
+      // сам Платон: медленно давит и зовёт платоников из мира идей
+      sx = dx
+      sy = dy
+      e.fire -= dt
+      if (e.fire <= 0 && !p.dead) {
+        e.fire = CFG.mini.summonCd
+        for (let k = 0; k < CFG.mini.summonN; k++) {
+          if (w.enemyCount >= w.enemies.length - 8) break
+          const a = (k / CFG.mini.summonN) * Math.PI * 2 + e.seed * 6.28
+          const sx2 = e.x + Math.cos(a) * 86
+          const sy2 = e.y + Math.sin(a) * 86
+          if (w.spawnEnemy(EK_PLATONIST, sx2, sy2)) w.burst(sx2, sy2, 6, PC_CREAM, 100, 2.5, 0.4)
+        }
+        w.audio.thud(true)
+      }
     } else {
       sx = dx
       sy = dy
@@ -119,7 +146,8 @@ export function updateEnemies(w: World, dt: number): void {
     if (Math.abs(sx) > 0.05) e.facing = sx > 0 ? 1 : -1
 
     // отставших телепортируем обратно на кольцо — плотность не проседает
-    if (d > 1450) {
+    // (Платон не телепортируется: идея движется степенно)
+    if (d > 1450 && e.kind !== EK_PLATO) {
       const a = w.rng.next() * Math.PI * 2
       e.x = p.x + Math.cos(a) * CFG.spawn.ringDist
       e.y = p.y + Math.sin(a) * CFG.spawn.ringDist

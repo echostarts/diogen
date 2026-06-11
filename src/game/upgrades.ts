@@ -86,6 +86,12 @@ export const UPGRADES: UpDef[] = [
       if (w.player.hp > w.player.maxHp) w.player.hp = w.player.maxHp
     },
   },
+  // --- эволюция ---
+  {
+    id: 'w_sun', name: 'СОЛНЦЕ', desc: 'Эволюция Фонаря: свет идёт от самой бочки. Шире, жарче, и никто его не заслонит.',
+    max: 1, lvl: (w) => (w.sun ? 1 : 0), avail: (w) => w.weapons.lantern >= 5 && w.pass.area >= 3 && !w.sun,
+    apply: (w) => { w.sun = true },
+  },
 ]
 
 // Запасной вариант, когда всё прокачано: просто похлёбка.
@@ -117,7 +123,8 @@ export function rollChoices(w: World, out: number[]): void {
     const u = UPGRADES[i]
     if (!u.avail(w) || u.lvl(w) >= u.max) continue
     cand.push(i)
-    weights.push(u.id.startsWith('w_') && armed < 2 ? 2 : 1)
+    // эволюция — редкий момент, пусть бросается в глаза
+    weights.push(u.id === 'w_sun' ? 3 : u.id.startsWith('w_') && armed < 2 ? 2 : 1)
   }
   // взвешенный выбор без возвращения
   for (let k = 0; k < 3; k++) {
