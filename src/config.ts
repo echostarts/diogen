@@ -78,18 +78,27 @@ export const CFG = {
     ] as Array<[number, number]>,
     bursts: [45, 105, 165, 225, 265],
     ringDist: 730,
-    afterBossMul: 0.15,
+    afterBossMul: 0, // дуэль есть дуэль: толпу приводит только сам Александр
   },
 
   // Мини-босс Платон.
   mini: { at: 150, summonCd: 8, summonN: 3, gems: 12 },
 
-  // Эволюция фонаря «Солнце»: свет от самой бочки.
+  // Элитные граждане: реже, толще, щедрее.
+  elite: { after: 100, chance: 0.04, hpMul: 3, rMul: 1.35, dmgMul: 1.25, spdMul: 0.88, xp: 6 },
+
+  // Эволюции оружия.
   sun: { dmgMul: 1.6, radiusMul: 1.55, intMul: 0.85 },
+  pack: { extraDogs: 3, dmgMul: 1.4, spdMul: 1.25 },
+  fan: { count: 3, spread: 0.17 },
+  pithos: { thresh: 0.35, chargeMul: 1.8, kbMul: 1.3 },
+
+  // Лавка Диогена (мета-прогресс, черепки).
+  meta: { costBase: 15, costStep: 25, max: 5, killsPerShard: 10, winBonus: 20 },
 
   boss: {
     hp: 3800, r: 30, speed: 56, enrageSpeed: 78,
-    dashSpeed: 950, dashDmg: 30, touchDmg: 22, touchCd: 0.8,
+    dashSpeed: 950, dashDmg: 27, touchDmg: 20, touchCd: 0.8,
     telegraph: 0.85, enrageTelegraph: 0.62, recover: 0.6,
     walkMin: 1.5, walkVar: 1.3,
     summonCd: 11, summonN: 5, cast: 0.9,

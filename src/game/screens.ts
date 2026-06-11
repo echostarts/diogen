@@ -91,6 +91,102 @@ export function drawTitle(ctx: CanvasRenderingContext2D, time: number, coarse: b
   ctx.globalAlpha = 1
 }
 
+// Кнопка лавки на тайтле (для тапа) и строка кошелька.
+export const SHOP_BTN = { x: VIEW_W / 2 - 110, y: 596, w: 220, h: 42 }
+
+export function drawShopButton(ctx: CanvasRenderingContext2D, wallet: number, coarse: boolean): void {
+  const b = SHOP_BTN
+  ctx.fillStyle = 'rgba(33, 21, 16, 0.6)'
+  ctx.beginPath()
+  ctx.roundRect(b.x, b.y, b.w, b.h, 8)
+  ctx.fill()
+  ctx.strokeStyle = 'rgba(227, 169, 79, 0.8)'
+  ctx.lineWidth = 2
+  ctx.stroke()
+  ctx.textAlign = 'center'
+  ctx.font = '800 18px system-ui, sans-serif'
+  ctx.fillStyle = PAL.ochre
+  ctx.fillText(coarse ? 'ЛАВКА' : 'ЛАВКА — L', b.x + b.w / 2, b.y + 19)
+  ctx.font = '600 13px system-ui, sans-serif'
+  ctx.fillStyle = 'rgba(243, 230, 200, 0.85)'
+  ctx.fillText('черепков: ' + wallet, b.x + b.w / 2, b.y + 35)
+}
+
+// Геометрия рядов лавки — общая для отрисовки и тач-попаданий.
+export const SHOP_PANEL = { x: VIEW_W / 2 - 330, y: 140, w: 660, h: 460 }
+export const SHOP_ROW_Y = 262
+export const SHOP_ROW_H = 64
+
+export interface ShopRow {
+  name: string
+  desc: string
+  lvl: number
+  max: number
+  cost: number // -1 = выкуплено до конца
+}
+
+export function drawShop(ctx: CanvasRenderingContext2D, rows: ShopRow[], sel: number, wallet: number, coarse: boolean): void {
+  dim(ctx, 0.62)
+  const P = SHOP_PANEL
+  ctx.fillStyle = 'rgba(26, 15, 10, 0.95)'
+  ctx.beginPath()
+  ctx.roundRect(P.x, P.y, P.w, P.h, 14)
+  ctx.fill()
+  ctx.strokeStyle = 'rgba(227, 169, 79, 0.7)'
+  ctx.lineWidth = 2.5
+  ctx.stroke()
+  ctx.textAlign = 'center'
+  ctx.font = '900 34px system-ui, sans-serif'
+  ctx.fillStyle = PAL.cream
+  ctx.fillText('ЛАВКА ДИОГЕНА', VIEW_W / 2, P.y + 52)
+  ctx.font = '600 15px system-ui, sans-serif'
+  ctx.fillStyle = PAL.ochre
+  ctx.fillText('ЧЕРЕПКОВ: ' + wallet + ' · цены окончательные, сдачи нет', VIEW_W / 2, P.y + 78)
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i]
+    const y = SHOP_ROW_Y + i * SHOP_ROW_H
+    const isSel = i === sel
+    const affordable = r.cost > 0 && wallet >= r.cost
+    if (isSel) {
+      ctx.fillStyle = 'rgba(227, 169, 79, 0.12)'
+      ctx.fillRect(P.x + 14, y - 6, P.w - 28, SHOP_ROW_H - 8)
+      ctx.strokeStyle = PAL.ochre
+      ctx.lineWidth = 2
+      ctx.strokeRect(P.x + 14, y - 6, P.w - 28, SHOP_ROW_H - 8)
+    }
+    ctx.textAlign = 'left'
+    ctx.font = '800 18px system-ui, sans-serif'
+    ctx.fillStyle = isSel ? PAL.glow : PAL.cream
+    ctx.fillText(r.name, P.x + 32, y + 16)
+    ctx.font = '400 13px system-ui, sans-serif'
+    ctx.fillStyle = 'rgba(243, 230, 200, 0.75)'
+    ctx.fillText(r.desc, P.x + 32, y + 36)
+    // пипсы уровня
+    for (let k = 0; k < r.max; k++) {
+      ctx.fillStyle = k < r.lvl ? PAL.ochre : 'rgba(243, 230, 200, 0.22)'
+      ctx.fillRect(P.x + 340 + k * 16, y + 6, 12, 6)
+    }
+    ctx.textAlign = 'right'
+    ctx.font = '800 17px system-ui, sans-serif'
+    if (r.cost < 0) {
+      ctx.fillStyle = 'rgba(243, 230, 200, 0.5)'
+      ctx.fillText('ВЫКУПЛЕНО', P.x + P.w - 32, y + 22)
+    } else {
+      ctx.fillStyle = affordable ? PAL.glow : 'rgba(126, 47, 29, 0.95)'
+      ctx.fillText(r.cost + ' чер.', P.x + P.w - 32, y + 22)
+    }
+  }
+
+  ctx.textAlign = 'center'
+  ctx.font = '600 15px system-ui, sans-serif'
+  ctx.fillStyle = 'rgba(243, 230, 200, 0.7)'
+  ctx.fillText(
+    coarse ? 'тап по строке — купить · тап мимо — выход' : '↑ ↓ и ENTER — купить · ESC — выход',
+    VIEW_W / 2, P.y + P.h - 24,
+  )
+}
+
 // Геометрия карточек левел-апа — общая для отрисовки и тач-попаданий.
 export const CARD_W = 330
 export const CARD_H = 230

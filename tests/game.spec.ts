@@ -36,8 +36,8 @@ const diag = (page: Page) => page.evaluate(() => window.__diag)
 // ВНИМАНИЕ: сиды (?seed=) пришпилены к текущему балансу. Любая правка
 // логики/баланса меняет раны — тогда сиды надо переподобрать
 // через `node scripts/calibrate.mjs "1 2 3 4 5 6 7 8" 8`.
-const SEED_WIN = 6   // доходит до босса и побеждает (~6:00)
-const SEED_DIE = 1   // умирает до босса (~3:45)
+const SEED_WIN = 7   // доходит до босса и побеждает (~5:34)
+const SEED_DIE = 2   // умирает до босса (~2:56)
 
 test('страница грузится: канвас, тайтл, ноль ошибок консоли', async ({ page }) => {
   const errors = trackErrors(page)
@@ -196,6 +196,30 @@ test.describe('тач-управление', () => {
     expect(after.px - before.px).toBeGreaterThan(60)
     expect(errors).toEqual([])
   })
+})
+
+test('лавка: покупка за черепки повышает стартовые статы', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.addInitScript(() => {
+    localStorage.setItem('diogen_meta', JSON.stringify({ w: 100, hp: 0, dmg: 0, spd: 0, mag: 0 }))
+  })
+  await page.goto(`/?seed=${SEED_WIN}`)
+  await page.waitForTimeout(600)
+  await page.keyboard.press('KeyL')
+  await page.waitForTimeout(300)
+  expect((await diag(page)).state).toBe('shop')
+  await page.keyboard.press('Enter') // купить «Толстые доски» (15 черепков)
+  await page.waitForTimeout(300)
+  expect((await diag(page)).wallet).toBe(85)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(300)
+  expect((await diag(page)).state).toBe('title')
+  await page.keyboard.press('Enter')
+  await page.waitForTimeout(500)
+  const d = await diag(page)
+  expect(d.state).toBe('run')
+  expect(d.maxHp).toBe(108) // 100 + 8 за уровень лавки
+  expect(errors).toEqual([])
 })
 
 test('быстрая победа через ?bosshp: экран победы работает', async ({ page }) => {

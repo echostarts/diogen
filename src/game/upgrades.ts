@@ -86,11 +86,26 @@ export const UPGRADES: UpDef[] = [
       if (w.player.hp > w.player.maxHp) w.player.hp = w.player.maxHp
     },
   },
-  // --- эволюция ---
+  // --- эволюции (оружие V + родственная пассивка III) ---
   {
     id: 'w_sun', name: 'СОЛНЦЕ', desc: 'Эволюция Фонаря: свет идёт от самой бочки. Шире, жарче, и никто его не заслонит.',
     max: 1, lvl: (w) => (w.sun ? 1 : 0), avail: (w) => w.weapons.lantern >= 5 && w.pass.area >= 3 && !w.sun,
     apply: (w) => { w.sun = true },
+  },
+  {
+    id: 'e_pack', name: 'СВОРА КИНИКОВ', desc: 'Эволюция Псов: +3 пса, быстрее и злее. Город прокормит всех.',
+    max: 1, lvl: (w) => (w.evoPack ? 1 : 0), avail: (w) => w.weapons.dogs >= 5 && w.pass.dog >= 3 && !w.evoPack,
+    apply: (w) => { w.evoPack = true },
+  },
+  {
+    id: 'e_fan', name: 'ДИАТРИБА', desc: 'Эволюция Плевка: три аргумента веером. Хоть один да попадёт.',
+    max: 1, lvl: (w) => (w.evoFan ? 1 : 0), avail: (w) => w.weapons.spit >= 5 && w.pass.pierce >= 3 && !w.evoFan,
+    apply: (w) => { w.evoFan = true },
+  },
+  {
+    id: 'e_pithos', name: 'ПИФОС', desc: 'Эволюция Бочки: давит почти на любом ходу, рывок копится вдвое быстрее.',
+    max: 1, lvl: (w) => (w.evoPithos ? 1 : 0), avail: (w) => w.weapons.barrel >= 5 && w.pass.mspd >= 3 && !w.evoPithos,
+    apply: (w) => { w.evoPithos = true },
   },
 ]
 
@@ -123,8 +138,8 @@ export function rollChoices(w: World, out: number[]): void {
     const u = UPGRADES[i]
     if (!u.avail(w) || u.lvl(w) >= u.max) continue
     cand.push(i)
-    // эволюция — редкий момент, пусть бросается в глаза
-    weights.push(u.id === 'w_sun' ? 3 : u.id.startsWith('w_') && armed < 2 ? 2 : 1)
+    // эволюции (max 1) — редкий момент, пусть бросаются в глаза
+    weights.push(u.max === 1 ? 3 : u.id.startsWith('w_') && armed < 2 ? 2 : 1)
   }
   // взвешенный выбор без возвращения
   for (let k = 0; k < 3; k++) {

@@ -39,7 +39,18 @@ function spawnRate(t: number): number {
 function spawnAt(w: World, kind: number, angle: number, dist: number): void {
   const x = w.player.x + Math.cos(angle) * dist
   const y = w.player.y + Math.sin(angle) * dist
-  w.spawnEnemy(kind, x, y)
+  const e = w.spawnEnemy(kind, x, y)
+  // видный гражданин: толще, злее, щедрее на оливки
+  const E = CFG.elite
+  if (e && w.t >= E.after && w.rng.next() < E.chance) {
+    e.elite = true
+    e.maxHp = Math.round(e.maxHp * E.hpMul)
+    e.hp = e.maxHp
+    e.r *= E.rMul
+    e.dmg = Math.round(e.dmg * E.dmgMul)
+    e.speed *= E.spdMul
+    e.xp = E.xp
+  }
 }
 
 export function spawnerTick(w: World, dt: number): void {
@@ -61,6 +72,7 @@ export function spawnerTick(w: World, dt: number): void {
       e.fire = 3 // первый призыв — через три секунды
       w.setCaption('ПЛАТОН ПРИШЁЛ ЗА СВОИМ ПЕТУХОМ', 3.5)
       w.audio.thud(true)
+      w.audio.horn()
     }
   }
   // волны-кольца по расписанию
@@ -74,6 +86,7 @@ export function spawnerTick(w: World, dt: number): void {
       spawnAt(w, kind, a0 + (i / n) * Math.PI * 2, CFG.spawn.ringDist)
     }
     w.burstIdx++
+    w.audio.horn()
   }
 }
 

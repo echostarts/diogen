@@ -21,8 +21,10 @@ export function maybeSpawnBoss(w: World): void {
   for (let i = 0; i < w.enemyCount; i++) w.killEnemy(i, false)
   w.setCaption('АЛЕКСАНДР: «ПРОСИ, ЧЕГО ХОЧЕШЬ»', 4)
   w.addTrauma(0.5)
+  w.slowmo = 1.1 // секунда замедления — оценить масштаб гостя
   w.burst(b.x, b.y, 24, PC_OCHRE, 220, 3, 0.8)
   w.audio.boom()
+  w.audio.horn()
   w.audio.drone(true)
 }
 
@@ -54,6 +56,7 @@ export function updateBoss(w: World, dt: number): void {
     b.dead = true
     w.addTrauma(1)
     w.addHitstop(0.1)
+    w.slowmo = 0.9
     w.burst(b.x, b.y, 50, PC_INK, 260, 4, 1)
     w.burst(b.x, b.y, 24, PC_GLOW, 200, 3, 0.8)
     w.burst(b.x, b.y, 16, PC_CREAM, 160, 2.5, 0.7)

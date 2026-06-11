@@ -61,6 +61,59 @@ export function drawIcon(ctx: CanvasRenderingContext2D, id: string, cx: number, 
       ctx.fill()
       break
     }
+    case 'e_pack': {
+      // три силуэта-пса уступом
+      ctx.fillStyle = cream
+      for (let k = 0; k < 3; k++) {
+        const off = (k - 1) * 6
+        ctx.globalAlpha = k === 1 ? 1 : 0.55
+        ctx.beginPath()
+        ctx.ellipse(off - 1, off * 0.5, 6.5, 3.4, 0, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(off + 5.5, off * 0.5 - 2, 2.6, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      ctx.globalAlpha = 1
+      ctx.fillStyle = ochre
+      ctx.beginPath()
+      ctx.arc(4.5, -3, 1.4, 0, Math.PI * 2)
+      ctx.fill()
+      break
+    }
+    case 'e_fan': {
+      // веер из трёх капель
+      ctx.fillStyle = cream
+      for (let k = -1; k <= 1; k++) {
+        ctx.save()
+        ctx.rotate(k * 0.5)
+        ctx.globalAlpha = k === 0 ? 1 : 0.6
+        ctx.beginPath()
+        ctx.moveTo(0, -10.5)
+        ctx.quadraticCurveTo(4.6, 0, 0, 5.5)
+        ctx.quadraticCurveTo(-4.6, 0, 0, -10.5)
+        ctx.fill()
+        ctx.restore()
+      }
+      ctx.globalAlpha = 1
+      break
+    }
+    case 'e_pithos': {
+      // пифос — большая остродонная бочка
+      ctx.fillStyle = cream
+      ctx.beginPath()
+      ctx.moveTo(-8.5, -7)
+      ctx.quadraticCurveTo(-10.5, 2, 0, 11)
+      ctx.quadraticCurveTo(10.5, 2, 8.5, -7)
+      ctx.closePath()
+      ctx.fill()
+      ctx.fillRect(-9.5, -9.5, 19, 3.2)
+      ctx.strokeStyle = ochre
+      ctx.lineWidth = 1.8
+      ctx.beginPath(); ctx.moveTo(-8.8, -2.4); ctx.lineTo(8.8, -2.4); ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(-6.6, 3.4); ctx.lineTo(6.6, 3.4); ctx.stroke()
+      break
+    }
     case 'w_dogs':
     case 'p_dog': {
       ctx.fillStyle = cream

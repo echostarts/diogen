@@ -66,7 +66,8 @@ export class Bot {
         this.density[si] += (1 - d / SECTOR_R) * (1 - d / SECTOR_R)
       }
       if (d < FLEE_R) {
-        const kindMul = e.kind === 2 ? 1.3 : e.kind === 4 ? 1.7 : 1
+        let kindMul = e.kind === 2 ? 1.3 : e.kind === 4 ? 1.7 : 1
+        if (e.elite) kindMul *= 1.35
         const wgt = ((FLEE_R - d) / FLEE_R) * 2.2 * kindMul
         fx += (dx / d) * wgt
         fy += (dy / d) * wgt

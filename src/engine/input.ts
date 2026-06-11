@@ -3,7 +3,7 @@
 
 export type Action =
   | 'up' | 'down' | 'left' | 'right'
-  | 'confirm' | 'pause' | 'mute' | 'dash' | 'restart'
+  | 'confirm' | 'pause' | 'mute' | 'dash' | 'restart' | 'shop'
   | 'opt1' | 'opt2' | 'opt3'
 
 const KEYMAP: Record<string, Action[]> = {
@@ -16,6 +16,7 @@ const KEYMAP: Record<string, Action[]> = {
   Escape: ['pause'], KeyP: ['pause'],
   KeyM: ['mute'],
   KeyR: ['restart'],
+  KeyL: ['shop'],
   Digit1: ['opt1'], Numpad1: ['opt1'],
   Digit2: ['opt2'], Numpad2: ['opt2'],
   Digit3: ['opt3'], Numpad3: ['opt3'],

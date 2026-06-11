@@ -2,7 +2,7 @@ import { STEP, VIEW_H, VIEW_W } from './config'
 import { AudioSys } from './engine/audio'
 import { Input } from './engine/input'
 import { Game } from './game/game'
-import { CARD_H, CARD_W, CARD_Y, cardX } from './game/screens'
+import { CARD_H, CARD_W, CARD_Y, cardX, SHOP_BTN, SHOP_PANEL, SHOP_ROW_H, SHOP_ROW_Y } from './game/screens'
 
 interface Diag {
   state: string
@@ -12,6 +12,8 @@ interface Diag {
   kills: number
   level: number
   hp: number
+  maxHp: number
+  wallet: number
   px: number
   py: number
   enemies: number
@@ -148,8 +150,19 @@ canvas.addEventListener('pointerdown', (e) => {
       break
     }
     case 'title':
-      input.inject('confirm')
+      if (inRect(vx, vy, SHOP_BTN)) input.inject('shop')
+      else input.inject('confirm')
       break
+    case 'shop': {
+      const P = SHOP_PANEL
+      if (vx < P.x || vx > P.x + P.w || vy < P.y || vy > P.y + P.h) {
+        input.inject('pause') // тап мимо панели — выход
+        break
+      }
+      const row = Math.floor((vy - (SHOP_ROW_Y - 6)) / SHOP_ROW_H)
+      if (row >= 0 && row < 4) game.shopBuy(row)
+      break
+    }
     case 'pause':
       input.inject('pause')
       break
@@ -158,6 +171,21 @@ canvas.addEventListener('pointerdown', (e) => {
       input.inject('restart')
       break
   }
+})
+
+// мобильный QoL: без контекстного меню, по возможности фуллскрин и альбомная ориентация
+window.addEventListener('contextmenu', (e) => e.preventDefault())
+let fsTried = false
+canvas.addEventListener('pointerdown', (e) => {
+  if (fsTried || e.pointerType === 'mouse' || !game.coarse) return
+  fsTried = true
+  try {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      void document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => { /* iOS */ })
+    }
+    const orient = screen.orientation as unknown as { lock?: (o: string) => Promise<void> }
+    if (orient && orient.lock) void orient.lock('landscape').catch(() => { /* не критично */ })
+  } catch { /* не судьба */ }
 })
 
 canvas.addEventListener('pointermove', (e) => {
@@ -195,7 +223,7 @@ document.addEventListener('visibilitychange', () => {
 
 // --- диагностика для тестов (?bot=1 и Playwright читают отсюда) ---
 const diag: Diag = {
-  state: 'title', time: 0, fps: 0, fps5: 0, kills: 0, level: 1, hp: 0,
+  state: 'title', time: 0, fps: 0, fps5: 0, kills: 0, level: 1, hp: 0, maxHp: 0, wallet: 0,
   px: 0, py: 0, enemies: 0, parts: 0, projs: 0, gems: 0,
   bossActive: false, bossHp: 0, bossDashes: 0, bossSummons: 0, lanternProcs: 0,
   muted: false, speed,
@@ -254,6 +282,8 @@ function frame(now: number): void {
     diag.kills = w.kills
     diag.level = w.level
     diag.hp = w.player.hp
+    diag.maxHp = w.player.maxHp
+    diag.wallet = game.meta.w
     diag.px = w.player.x
     diag.py = w.player.y
     diag.enemies = w.enemyCount

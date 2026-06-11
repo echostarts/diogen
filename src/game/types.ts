@@ -18,6 +18,7 @@ export interface Enemy {
   fire: number // кулдаун выстрела софиста
   ramCd: number
   dogCd: number
+  elite: boolean
 }
 
 export interface Proj {

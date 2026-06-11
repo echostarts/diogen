@@ -41,7 +41,7 @@ export function updatePlayer(w: World, dt: number, mx: number, my: number, dashP
 
   // заряд рывка копится при движении (когда бочка-таран открыта)
   if (w.weapons.barrel > 0 && p.dashT <= 0 && v > speed * 0.4) {
-    const chargeTime = B.charge * (1 - 0.12 * (w.weapons.barrel - 1))
+    const chargeTime = B.charge * (1 - 0.12 * (w.weapons.barrel - 1)) / (w.evoPithos ? CFG.pithos.chargeMul : 1)
     p.charge = Math.min(1, p.charge + dt / chargeTime)
   }
 

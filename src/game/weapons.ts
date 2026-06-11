@@ -111,20 +111,24 @@ function updateSpit(w: World, dt: number): void {
   let tx: number
   let ty: number
   if (t === -2) { tx = w.boss.x; ty = w.boss.y } else { tx = w.enemies[t].x; ty = w.enemies[t].y }
-  let dx = tx - p.x
-  let dy = ty - p.y
-  const d = Math.hypot(dx, dy) || 1
-  dx /= d
-  dy /= d
+  const base = Math.atan2(ty - p.y, tx - p.x)
   const dmg = S.dmg * (1 + 0.25 * (lvl - 1)) * w.dmgMult()
   const pierce = 1 + w.pass.pierce
-  w.spawnProj(p.x + dx * 12, p.y + dy * 12 - 6, dx * S.speed, dy * S.speed, S.r, dmg, pierce, 1.6, false)
+  // эволюция «Диатриба»: веер из трёх плевков
+  const count = w.evoFan ? CFG.fan.count : 1
+  for (let k = 0; k < count; k++) {
+    const a = base + (k - (count - 1) / 2) * CFG.fan.spread
+    const dx = Math.cos(a)
+    const dy = Math.sin(a)
+    w.spawnProj(p.x + dx * 12, p.y + dy * 12 - 6, dx * S.speed, dy * S.speed, S.r, dmg, pierce, 1.6, false)
+  }
   w.audio.shoot()
 }
 
 function updateDogs(w: World, dt: number): void {
   const lvl = w.weapons.dogs
-  const want = lvl > 0 ? Math.min(CFG.dogs.base + w.pass.dog, w.dogs.length) : 0
+  const extra = w.evoPack ? CFG.pack.extraDogs : 0
+  const want = lvl > 0 ? Math.min(CFG.dogs.base + w.pass.dog + extra, w.dogs.length) : 0
   const p = w.player
   while (w.dogCount < want) {
     const d = w.dogs[w.dogCount++]
@@ -138,8 +142,8 @@ function updateDogs(w: World, dt: number): void {
   if (want === 0) { w.dogCount = 0; return }
 
   const D = CFG.dogs
-  const speed = D.speed * (1 + 0.08 * (lvl - 1))
-  const dmg = D.dmg * (1 + 0.28 * (lvl - 1)) * w.dmgMult()
+  const speed = D.speed * (1 + 0.08 * (lvl - 1)) * (w.evoPack ? CFG.pack.spdMul : 1)
+  const dmg = D.dmg * (1 + 0.28 * (lvl - 1)) * w.dmgMult() * (w.evoPack ? CFG.pack.dmgMul : 1)
 
   for (let di = 0; di < w.dogCount; di++) {
     const d = w.dogs[di]
@@ -226,8 +230,11 @@ function updateRam(w: World): void {
   const B = CFG.barrel
   const v = Math.hypot(p.vx, p.vy)
   const dashing = p.dashT > 0
-  if (!dashing && v < w.moveSpeed() * B.thresh) return
+  // эволюция «Пифос»: давит почти на любой скорости
+  const thresh = w.evoPithos ? CFG.pithos.thresh : B.thresh
+  if (!dashing && v < w.moveSpeed() * thresh) return
   const lvl = w.weapons.barrel
+  const kbMul = w.evoPithos ? CFG.pithos.kbMul : 1
   const dmg = B.dmg * (1 + 0.3 * (lvl - 1)) * w.dmgMult() * (dashing ? B.dashDmg : 1)
   const n = w.hash.query(p.x, p.y, p.r + 30)
   for (let k = 0; k < n; k++) {
@@ -239,7 +246,7 @@ function updateRam(w: World): void {
     const rr = e.r + p.r + 4
     if (dx * dx + dy * dy >= rr * rr) continue
     e.ramCd = B.hitCd
-    w.damageEnemy(i, dmg, p.x - p.vx * 0.05, p.y - p.vy * 0.05, B.kb * (dashing ? 1.4 : 1))
+    w.damageEnemy(i, dmg, p.x - p.vx * 0.05, p.y - p.vy * 0.05, B.kb * kbMul * (dashing ? 1.4 : 1))
   }
   const b = w.boss
   if (b.active && !b.dead && b.touchCd <= -0.2) {

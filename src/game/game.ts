@@ -1,4 +1,4 @@
-import { EK_GUARD, EK_MERCHANT, EK_PLATONIST, EK_SOPHIST, VIEW_H, VIEW_W } from '../config'
+import { CFG, EK_GUARD, EK_MERCHANT, EK_PLATONIST, EK_SOPHIST, VIEW_H, VIEW_W } from '../config'
 import type { AudioSys } from '../engine/audio'
 import type { Input } from '../engine/input'
 import { Bot } from './bot'
@@ -9,13 +9,46 @@ import { Hud } from './hud'
 import { updateGems } from './pickups'
 import { updatePlayer } from './player'
 import { drawWorld } from './render'
-import { drawEnd, drawLevelup, drawPause, drawTitle } from './screens'
+import { drawEnd, drawLevelup, drawPause, drawShop, drawShopButton, drawTitle, type ShopRow } from './screens'
 import { buildSprites, type Sprites } from './sprites'
 import { defByIndex, roman, rollChoices, UPGRADES } from './upgrades'
 import { updateWeapons } from './weapons'
 import { World } from './world'
 
-export type GState = 'title' | 'run' | 'levelup' | 'pause' | 'over' | 'win'
+export type GState = 'title' | 'run' | 'levelup' | 'pause' | 'over' | 'win' | 'shop'
+
+// Товары лавки: ключ в Meta, название, описание.
+const SHOP_ITEMS = [
+  { key: 'hp' as const, name: 'ТОЛСТЫЕ ДОСКИ', desc: '+8 к максимуму HP за уровень' },
+  { key: 'dmg' as const, name: 'НАКОПЛЕННАЯ ЖЕЛЧЬ', desc: '+4% урона за уровень' },
+  { key: 'spd' as const, name: 'СМАЗАННЫЕ ОБОДЬЯ', desc: '+3% скорости за уровень' },
+  { key: 'mag' as const, name: 'ШИРОКАЯ ЧАША', desc: '+8% радиуса подбора за уровень' },
+]
+
+interface Meta {
+  w: number
+  hp: number
+  dmg: number
+  spd: number
+  mag: number
+}
+
+// Красная кромка при низком HP — рендерится один раз.
+let redVignette: HTMLCanvasElement | null = null
+function getRedVignette(): HTMLCanvasElement {
+  if (!redVignette) {
+    redVignette = document.createElement('canvas')
+    redVignette.width = VIEW_W
+    redVignette.height = VIEW_H
+    const c = redVignette.getContext('2d')!
+    const g = c.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.34, VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.78)
+    g.addColorStop(0, 'rgba(126, 24, 12, 0)')
+    g.addColorStop(1, 'rgba(126, 24, 12, 0.55)')
+    c.fillStyle = g
+    c.fillRect(0, 0, VIEW_W, VIEW_H)
+  }
+  return redVignette
+}
 
 export interface GameOpts {
   bot: boolean
@@ -41,6 +74,10 @@ export class Game {
   coarse = false
   /** Состояние виртуального стика — пишет main.ts, рисует HUD. */
   stick = { active: false, ox: 0, oy: 0, dx: 0, dy: 0 }
+  meta: Meta = { w: 0, hp: 0, dmg: 0, spd: 0, mag: 0 }
+  shopSel = 0
+  private readonly shopRowsBuf: ShopRow[] = []
+  private heartT = 0
   private bestLine: string | null = null
   private readonly opts: GameOpts
 
@@ -49,10 +86,75 @@ export class Game {
     this.audio = audio
     this.opts = opts
     this.world = new World(audio)
+    this.loadMeta()
+    this.syncMeta()
     this.world.reset(this.pickSeed())
     this.bot = opts.bot ? new Bot() : null
     this.god = opts.stress
     this.loadBest()
+  }
+
+  // --- лавка: кошелёк и постоянные бонусы (localStorage) ---
+
+  private loadMeta(): void {
+    try {
+      const raw = localStorage.getItem('diogen_meta')
+      if (!raw) return
+      const m = JSON.parse(raw) as Partial<Meta>
+      this.meta.w = m.w ?? 0
+      this.meta.hp = m.hp ?? 0
+      this.meta.dmg = m.dmg ?? 0
+      this.meta.spd = m.spd ?? 0
+      this.meta.mag = m.mag ?? 0
+    } catch { /* начнём с нуля */ }
+  }
+
+  private saveMeta(): void {
+    try { localStorage.setItem('diogen_meta', JSON.stringify(this.meta)) } catch { /* ок */ }
+  }
+
+  private syncMeta(): void {
+    this.world.meta.hp = this.meta.hp
+    this.world.meta.dmg = this.meta.dmg
+    this.world.meta.spd = this.meta.spd
+    this.world.meta.mag = this.meta.mag
+  }
+
+  shopCost(lvl: number): number {
+    return CFG.meta.costBase + CFG.meta.costStep * lvl
+  }
+
+  /** Покупка строки i (клавиши и тап). */
+  shopBuy(i: number): void {
+    this.shopSel = i
+    const item = SHOP_ITEMS[i]
+    if (!item) return
+    const lvl = this.meta[item.key]
+    if (lvl >= CFG.meta.max) return
+    const cost = this.shopCost(lvl)
+    if (this.meta.w < cost) {
+      this.audio.thud(false)
+      return
+    }
+    this.meta.w -= cost
+    this.meta[item.key]++
+    this.saveMeta()
+    this.audio.levelup()
+  }
+
+  shopRows(out: ShopRow[]): void {
+    out.length = 0
+    for (let i = 0; i < SHOP_ITEMS.length; i++) {
+      const it = SHOP_ITEMS[i]
+      const lvl = this.meta[it.key]
+      out.push({
+        name: it.name,
+        desc: it.desc,
+        lvl,
+        max: CFG.meta.max,
+        cost: lvl >= CFG.meta.max ? -1 : this.shopCost(lvl),
+      })
+    }
   }
 
   // --- лучший ран (localStorage) ---
@@ -93,6 +195,7 @@ export class Game {
   }
 
   startRun(): void {
+    this.syncMeta()
     this.world.reset(this.pickSeed())
     this.world.bossHpOverride = this.opts.bossHpOverride
     this.bot?.reset()
@@ -126,7 +229,23 @@ export class Game {
 
     switch (this.state) {
       case 'title': {
-        if (this.bot || inp.wasPressed('confirm')) this.startRun()
+        if (this.bot || inp.wasPressed('confirm')) {
+          this.startRun()
+        } else if (inp.wasPressed('shop')) {
+          this.state = 'shop'
+          this.shopSel = 0
+          this.audio.ui()
+        }
+        break
+      }
+      case 'shop': {
+        if (inp.wasPressed('up')) { this.shopSel = (this.shopSel + SHOP_ITEMS.length - 1) % SHOP_ITEMS.length; this.audio.ui() }
+        if (inp.wasPressed('down')) { this.shopSel = (this.shopSel + 1) % SHOP_ITEMS.length; this.audio.ui() }
+        if (inp.wasPressed('confirm')) this.shopBuy(this.shopSel)
+        if (inp.wasPressed('pause') || inp.wasPressed('shop')) {
+          this.state = 'title'
+          this.audio.ui()
+        }
         break
       }
       case 'run': {
@@ -146,11 +265,19 @@ export class Game {
           dash = this.bot.dash
         }
         this.worldTick(dt, mx, my, dash)
+        this.audio.ambientStep(dt)
         const w = this.world
+        // сердцебиение на издыхании
+        this.heartT -= dt
+        if (!w.player.dead && w.player.hp < w.player.maxHp * 0.3 && this.heartT <= 0) {
+          this.heartT = 0.95
+          this.audio.heart()
+        }
         if (w.endState > 0 && w.endTimer <= 0) {
           this.state = w.endState === 2 ? 'win' : 'over'
           this.buildStats(false)
           this.saveBest(w.endState === 2)
+          this.awardShards(w.endState === 2)
         } else if (w.endState === 0 && w.pendingLevels > 0) {
           this.openLevelup()
         }
@@ -187,15 +314,21 @@ export class Game {
     inp.endTick()
   }
 
-  private worldTick(dt: number, mx: number, my: number, dash: boolean): void {
+  private worldTick(rdt: number, mx: number, my: number, dash: boolean): void {
     const w = this.world
-    if (w.endTimer > 0) w.endTimer -= dt
+    if (w.endTimer > 0) w.endTimer -= rdt
     // в стрессе убийства идут потоком — хитстоп заморозил бы время намертво
     if (this.opts.stress) w.hitstop = 0
     if (w.hitstop > 0) {
-      w.hitstop -= dt
-      updateFx(w, dt)
+      w.hitstop -= rdt
+      updateFx(w, rdt)
       return
+    }
+    // слоу-мо: мир течёт медленнее, реальный таймер — нет
+    let dt = rdt
+    if (w.slowmo > 0) {
+      w.slowmo -= rdt
+      dt = rdt * 0.35
     }
     w.t += dt
     if (w.endState === 0) spawnerTick(w, dt)
@@ -258,6 +391,18 @@ export class Game {
     }
   }
 
+  /** Черепки за ран: 1 за каждые 10 убеждённых + премия за победу. */
+  private awardShards(win: boolean): void {
+    if (this.bot) return // ботам не платят, иначе ?bot=1 — ферма черепков
+    const got = Math.floor(this.world.kills / CFG.meta.killsPerShard) + (win ? CFG.meta.winBonus : 0)
+    if (got <= 0) return
+    this.meta.w += got
+    this.saveMeta()
+    if (this.statLines.length > 0) {
+      this.statLines[0] += '   ·   ЧЕРЕПКИ: +' + got
+    }
+  }
+
   /** Сводка рана для паузы и финала. */
   private buildStats(forPause: boolean): void {
     const w = this.world
@@ -281,12 +426,24 @@ export class Game {
     drawWorld(ctx, this.world, this.sprites, s, ox, oy)
     ctx.setTransform(s, 0, 0, s, ox, oy)
     if (vignette) ctx.drawImage(vignette, 0, 0, VIEW_W, VIEW_H)
-    if (this.state !== 'title') {
+    // тревожная кромка, когда здоровье на донышке
+    const wp = this.world.player
+    if (this.state === 'run' && !wp.dead && wp.hp < wp.maxHp * 0.3) {
+      ctx.globalAlpha = 0.5 + 0.35 * Math.sin(this.uiT * 6.2)
+      ctx.drawImage(getRedVignette(), 0, 0, VIEW_W, VIEW_H)
+      ctx.globalAlpha = 1
+    }
+    if (this.state !== 'title' && this.state !== 'shop') {
       this.hud.draw(ctx, this.world, this.audio.muted, this.state === 'run' ? this.stick : null, this.coarse)
     }
     switch (this.state) {
       case 'title':
         drawTitle(ctx, this.uiT, this.coarse, this.bestLine)
+        drawShopButton(ctx, this.meta.w, this.coarse)
+        break
+      case 'shop':
+        this.shopRows(this.shopRowsBuf)
+        drawShop(ctx, this.shopRowsBuf, this.shopSel, this.meta.w, this.coarse)
         break
       case 'levelup':
         drawLevelup(ctx, this.world, this.choices, this.sel, this.coarse)

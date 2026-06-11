@@ -49,9 +49,16 @@ export class World {
   // Уровни оружия (0 — не открыто) и пассивок.
   weapons = { lantern: 1, spit: 0, dogs: 0, barrel: 0 }
   pass = { dmg: 0, aspd: 0, area: 0, mspd: 0, magnet: 0, hp: 0, dog: 0, pierce: 0, ask: 0, soup: 0 }
-  /** Эволюция фонаря: свет идёт от самой бочки. */
+  /** Эволюции: солнце (фонарь), свора (псы), диатриба (плевок), пифос (бочка). */
   sun = false
+  evoPack = false
+  evoFan = false
+  evoPithos = false
   miniSpawned = false
+  /** Слоу-мо (секунды реального времени) — выход и смерть босса. */
+  slowmo = 0
+  /** Мета-бонусы из лавки (уровни 0..5). Выставляется Game до reset(). */
+  meta = { hp: 0, dmg: 0, spd: 0, mag: 0 }
 
   lanternAngle = 0
   lanternTick = 0
@@ -105,7 +112,7 @@ export class World {
     for (let i = 0; i < CFG.caps.enemies; i++) {
       this.enemies.push({
         uid: 0, kind: 0, x: 0, y: 0, hp: 1, maxHp: 1, r: 10, speed: 0, dmg: 0, xp: 1,
-        kx: 0, ky: 0, flash: 0, dying: false, facing: 1, seed: 0, fire: 0, ramCd: 0, dogCd: 0,
+        kx: 0, ky: 0, flash: 0, dying: false, facing: 1, seed: 0, fire: 0, ramCd: 0, dogCd: 0, elite: false,
       })
     }
     for (let i = 0; i < CFG.caps.projs; i++) {
@@ -116,7 +123,7 @@ export class World {
       this.parts.push({ x: 0, y: 0, vx: 0, vy: 0, life: 0, max: 1, size: 2, col: 0, drag: 0 })
     }
     for (let i = 0; i < CFG.caps.nums; i++) this.nums.push({ x: 0, y: 0, v: 0, t: 0, big: false })
-    for (let i = 0; i < 8; i++) this.dogs.push({ x: 0, y: 0, state: 0, tUid: 0, tIdx: -1, timer: 0, facing: 1, seed: i / 8 })
+    for (let i = 0; i < 12; i++) this.dogs.push({ x: 0, y: 0, state: 0, tUid: 0, tIdx: -1, timer: 0, facing: 1, seed: i / 12 })
     for (let i = 0; i < 8; i++) this.floaters.push({ x: 0, y: 0, t: 0, text: '' })
   }
 
@@ -134,7 +141,8 @@ export class World {
     this.endState = 0
     const p = this.player
     p.x = 0; p.y = 0; p.vx = 0; p.vy = 0
-    p.hp = CFG.player.hp; p.maxHp = CFG.player.hp
+    p.maxHp = CFG.player.hp + this.meta.hp * 8
+    p.hp = p.maxHp
     p.invuln = 0; p.facing = 1; p.dist = 0
     p.charge = 0; p.dashT = 0; p.dashX = 1; p.dashY = 0; p.dead = false
     this.weapons.lantern = 1; this.weapons.spit = 0; this.weapons.dogs = 0; this.weapons.barrel = 0
@@ -142,7 +150,11 @@ export class World {
     ps.dmg = 0; ps.aspd = 0; ps.area = 0; ps.mspd = 0; ps.magnet = 0
     ps.hp = 0; ps.dog = 0; ps.pierce = 0; ps.ask = 0; ps.soup = 0
     this.sun = false
+    this.evoPack = false
+    this.evoFan = false
+    this.evoPithos = false
     this.miniSpawned = false
+    this.slowmo = 0
     this.lanternAngle = 0
     this.lanternTick = 0.3
     this.lanternPulse = 0
@@ -172,7 +184,7 @@ export class World {
   // ---- производные характеристики ----
 
   dmgMult(): number {
-    return (1 + 0.2 * this.pass.dmg) * (1 + 0.35 * this.pass.ask)
+    return (1 + 0.2 * this.pass.dmg) * (1 + 0.35 * this.pass.ask) * (1 + 0.04 * this.meta.dmg)
   }
 
   /** Множитель интервалов атак (меньше — быстрее). */
@@ -185,11 +197,11 @@ export class World {
   }
 
   moveSpeed(): number {
-    return CFG.player.speed * (1 + 0.1 * this.pass.mspd)
+    return CFG.player.speed * (1 + 0.1 * this.pass.mspd) * (1 + 0.03 * this.meta.spd)
   }
 
   magnetR(): number {
-    return CFG.player.magnet * (1 + 0.25 * this.pass.magnet)
+    return CFG.player.magnet * (1 + 0.25 * this.pass.magnet) * (1 + 0.08 * this.meta.mag)
   }
 
   // ---- спавны/события ----
@@ -215,6 +227,7 @@ export class World {
     e.fire = 1 + e.seed * CFG.sophist.fireCd
     e.ramCd = 0
     e.dogCd = 0
+    e.elite = false
     return e
   }
 

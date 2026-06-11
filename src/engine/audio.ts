@@ -110,6 +110,31 @@ export class AudioSys {
   ui(): void { this.osc('square', 520, 560, 0.04, 0.1) }
   boom(): void { this.osc('sine', 75, 28, 0.55, 0.65); this.noise(0.4, 0.4, 600, 60, 'lowpass') }
 
+  /** Горн глашатая — новая волна. */
+  horn(): void {
+    this.osc('sawtooth', 98, 147, 0.45, 0.13)
+    this.osc('sawtooth', 196, 294, 0.45, 0.06)
+  }
+
+  /** Глухое сердцебиение при низком HP. */
+  heart(): void {
+    this.osc('sine', 62, 38, 0.1, 0.3)
+    this.osc('sine', 58, 36, 0.09, 0.22, 0.16)
+  }
+
+  private ambT = 2
+  /** Редкие тихие ноты лиры — фоновая атмосфера. Вызывается каждый тик рана. */
+  ambientStep(dt: number): void {
+    if (!this.ctx || this.muted) return
+    this.ambT -= dt
+    if (this.ambT > 0) return
+    this.ambT = 4 + Math.random() * 4
+    const scale = [220, 261.63, 293.66, 329.63, 392]
+    const f = scale[(Math.random() * scale.length) | 0]
+    this.osc('triangle', f, f * 0.995, 1.3, 0.045)
+    if (Math.random() < 0.5) this.osc('triangle', f * 1.5, f * 1.5, 1.1, 0.025, 0.28)
+  }
+
   stinger(win: boolean): void {
     const seq = win ? [392, 523, 659, 784] : [330, 262, 208, 156]
     for (let i = 0; i < seq.length; i++) this.osc('triangle', seq[i], seq[i], 0.22, 0.3, i * 0.13)

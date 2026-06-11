@@ -148,7 +148,12 @@ export class Hud {
       ctx.strokeStyle = 'rgba(243, 230, 200, 0.5)'
       ctx.lineWidth = 1.5
       ctx.stroke()
-      drawIcon(ctx, i === 0 && w.sun ? 'w_sun' : WEAPON_IDS[i], x + 22, y + 20, 26)
+      const evolved =
+        i === 0 && w.sun ? 'w_sun' :
+        i === 1 && w.evoFan ? 'e_fan' :
+        i === 2 && w.evoPack ? 'e_pack' :
+        i === 3 && w.evoPithos ? 'e_pithos' : WEAPON_IDS[i]
+      drawIcon(ctx, evolved, x + 22, y + 20, 26)
       // пипсы уровня
       for (let k = 0; k < 5; k++) {
         const px = x + 7 + k * 8

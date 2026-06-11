@@ -142,14 +142,27 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
     ctx.drawImage(spr.gem, wx(g.x) - (gs * k) / 2, wy(g.y + bob) - (gs * k) / 2, gs * k, gs * k)
   }
 
+  // --- метки элит (кольцо под ногами) ---
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+  ctx.strokeStyle = 'rgba(227, 169, 79, 0.55)'
+  ctx.lineWidth = 2
+  for (let i = 0; i < w.enemyCount; i++) {
+    const e = w.enemies[i]
+    if (!e.elite) continue
+    ctx.beginPath()
+    ctx.arc(wx(e.x), wy(e.y + e.r * 0.72), e.r * 1.15 * s, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+
   // --- враги ---
   for (let i = 0; i < w.enemyCount; i++) {
     const e = w.enemies[i]
     const sp = spr.enemies[e.kind]
     const img = e.flash > 0 ? sp.white : sp.img
     const bob = Math.sin(w.t * 9 + e.seed * 6.28)
-    const sx = (s / 2) * e.facing * (1 - bob * 0.03)
-    const sy = (s / 2) * (1 + bob * 0.05)
+    const big = e.elite ? 1.35 : 1
+    const sx = (s / 2) * big * e.facing * (1 - bob * 0.03)
+    const sy = (s / 2) * big * (1 + bob * 0.05)
     ctx.setTransform(sx, 0, 0, sy, wx(e.x), wy(e.y + bob * 1.2))
     ctx.drawImage(img, -sp.ax * 2, -sp.ay * 2)
   }
@@ -169,7 +182,8 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
   // --- игрок: Диоген в бочке ---
   const blink = p.invuln > 0 && (Math.floor(p.invuln * 14) & 1) === 0
   if (!p.dead && !blink) {
-    ctx.setTransform(s, 0, 0, s, wx(p.x), wy(p.y))
+    const pifos = w.evoPithos ? 1.16 : 1
+    ctx.setTransform(s * pifos, 0, 0, s * pifos, wx(p.x), wy(p.y))
     const tilt = Math.max(-0.16, Math.min(0.16, p.vx * 0.0007)) + Math.sin(p.dist * 0.06) * 0.03
     ctx.rotate(tilt)
     const squash = p.dashT > 0 ? 1.12 : 1
