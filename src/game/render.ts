@@ -146,12 +146,13 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
     for (let cy = c0y; cy <= c1y; cy++) {
       for (let cx = c0x; cx <= c1x; cx++) {
         const h = cellHash(cx, cy, 7)
-        if (h > 0.62) continue
+        if (h > 0.68) continue
         const type = (cellHash(cx, cy, 13) * spr.props.length) | 0
         const px = (cx + 0.18 + cellHash(cx, cy, 21) * 0.64) * CELL
         const py = (cy + 0.18 + cellHash(cx, cy, 33) * 0.64) * CELL
         const img = spr.props[type]
-        ctx.drawImage(img, px - img.width / 2, py - img.height + 10)
+        const k = 0.85 + cellHash(cx, cy, 41) * 0.4 // разброс размера
+        ctx.drawImage(img, px - (img.width * k) / 2, py - img.height * k + 10, img.width * k, img.height * k)
       }
     }
   }
@@ -244,10 +245,10 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
     const img = e.flash > 0 ? sp.white[f] : sp.img[f]
     const bob = Math.sin(w.t * 9 + e.seed * 6.28)
     const big = e.elite ? 1.35 : 1
-    const sx = (s / 2) * big * e.facing * (1 - bob * 0.03)
-    const sy = (s / 2) * big * (1 + bob * 0.05)
+    const sx = (s / sp.ss) * big * e.facing * (1 - bob * 0.03)
+    const sy = (s / sp.ss) * big * (1 + bob * 0.05)
     ctx.setTransform(sx, 0, 0, sy, wx(e.x), wy(e.y + bob * 1.2))
-    ctx.drawImage(img, -sp.ax * 2, -sp.ay * 2)
+    ctx.drawImage(img, -sp.ax * sp.ss, -sp.ay * sp.ss)
   }
 
   // --- босс ---
@@ -257,10 +258,10 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
     const img = b.flash > 0 ? sp.white[f] : sp.img[f]
     const bob = Math.sin(w.t * 6)
     const lunge = b.phase === 2 ? 0.12 : 0
-    const sx = (s / 2) * b.facing * (1 + lunge)
-    const sy = (s / 2) * (1 + bob * 0.02 - lunge * 0.5)
+    const sx = (s / sp.ss) * b.facing * (1 + lunge)
+    const sy = (s / sp.ss) * (1 + bob * 0.02 - lunge * 0.5)
     ctx.setTransform(sx, 0, 0, sy, wx(b.x), wy(b.y + bob))
-    ctx.drawImage(img, -sp.ax * 2, -sp.ay * 2)
+    ctx.drawImage(img, -sp.ax * sp.ss, -sp.ay * sp.ss)
   }
 
   // --- игрок ---
@@ -273,8 +274,11 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
     ctx.rotate(stride * 0.04)
     ctx.translate(0, -Math.abs(stride) * 1.6)
     const f = p.facing
-    // хитон-колокол с разлётом при шаге
+    // ступни выглядывают в шаге
     ctx.fillStyle = PAL.ink
+    ctx.fillRect((-3 - stride * 3) * f - 1.5, 13.4, 3.4, 1.5)
+    ctx.fillRect((3 + stride * 3) * f - 1.5, 13.2, 3.4, 1.5)
+    // хитон-колокол с разлётом при шаге
     ctx.beginPath()
     ctx.moveTo(-7 - stride * 2.5, 14)
     ctx.quadraticCurveTo(-6, -4, -4, -8)
@@ -282,26 +286,68 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
     ctx.quadraticCurveTo(6, -4, 7 + stride * 2.5, 14)
     ctx.closePath()
     ctx.fill()
-    // гиматий — диагональная складка
+    // вертикальные складки хитона: охра + кремовая нить
+    ctx.strokeStyle = PAL.ochre
+    ctx.lineWidth = 0.8
+    ctx.beginPath(); ctx.moveTo(-2.6, -5); ctx.quadraticCurveTo(-3.4, 4, -3.8 - stride * 1.2, 13); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(2.6, -5); ctx.quadraticCurveTo(3.4, 4, 3.8 + stride * 1.2, 13); ctx.stroke()
+    ctx.strokeStyle = 'rgba(243, 230, 200, 0.5)'
+    ctx.lineWidth = 0.5
+    ctx.beginPath(); ctx.moveTo(0, -5.5); ctx.lineTo(stride * 0.8, 13); ctx.stroke()
+    // гиматий — диагональ с красной полосой
     ctx.strokeStyle = PAL.ochre
     ctx.lineWidth = 1.8
     ctx.beginPath()
     ctx.moveTo(-4 * f, -6)
     ctx.quadraticCurveTo(0, 2, 5 * f, 12)
     ctx.stroke()
-    // голова с пучком и лентой
+    ctx.strokeStyle = PAL.blood
+    ctx.lineWidth = 0.9
+    ctx.beginPath()
+    ctx.moveTo(-4.8 * f, -5)
+    ctx.quadraticCurveTo(-0.6 * f, 3, 4.2 * f, 12.6)
+    ctx.stroke()
+    // красный пояс под грудью (киническая простота, но со вкусом)
+    ctx.strokeStyle = PAL.blood
+    ctx.lineWidth = 1.1
+    ctx.beginPath()
+    ctx.moveTo(-4.4, -3.4)
+    ctx.quadraticCurveTo(0, -2, 4.4, -3.4)
+    ctx.stroke()
+    // пунктир по подолу
+    ctx.fillStyle = PAL.cream
+    for (let hx = -6 - stride * 2; hx < 6.4 + stride * 2; hx += 2.4) ctx.fillRect(hx, 12.6, 1.3, 0.9)
+    // голова в профиль с пучком и красной лентой
     ctx.fillStyle = PAL.ink
     ctx.beginPath()
     ctx.arc(1 * f, -13.5, 5, 0, Math.PI * 2)
     ctx.fill()
+    // нос клином
     ctx.beginPath()
-    ctx.arc(-3.6 * f, -16.5, 2.6, 0, Math.PI * 2)
+    ctx.moveTo((1 + 3.4) * f, -15.6)
+    ctx.lineTo((1 + 7) * f, -13)
+    ctx.lineTo((1 + 3.2) * f, -11.6)
+    ctx.closePath()
     ctx.fill()
+    // пучок
+    ctx.beginPath()
+    ctx.arc(-3.6 * f, -16.5, 2.8, 0, Math.PI * 2)
+    ctx.fill()
+    // пряди волос
+    ctx.strokeStyle = PAL.ochre
+    ctx.lineWidth = 0.55
+    ctx.beginPath(); ctx.moveTo(-1.6 * f, -18); ctx.quadraticCurveTo(-3 * f, -17.6, -4 * f, -16.2); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(0.4 * f, -18.4); ctx.quadraticCurveTo(-2 * f, -18.6, -4.4 * f, -17.4); ctx.stroke()
+    // красная лента и серьга
+    ctx.fillStyle = PAL.blood
+    ctx.fillRect(1 * f - 5, -16.8, 10, 1.5)
+    ctx.fillRect(-3.6 * f - 0.9, -19.8, 1.8, 1.2)
     ctx.fillStyle = PAL.ochre
-    ctx.fillRect(1 * f - 5, -16.6, 10, 1.6)
+    ctx.fillRect(0 * f - 0.6, -9.6, 1.2, 1.6)
+    // глаз
     ctx.fillStyle = PAL.cream
     ctx.fillRect(1 * f + 1.6 * f, -14.6, 1.4, 1.4)
-    // посох киника
+    // посох киника с навершием
     ctx.strokeStyle = PAL.ink
     ctx.lineWidth = 2
     ctx.beginPath()
@@ -312,14 +358,20 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
     ctx.beginPath()
     ctx.arc(8 * f, -10.5, 2, 0, Math.PI * 2)
     ctx.fill()
+    ctx.strokeStyle = PAL.ochre
+    ctx.lineWidth = 0.6
+    ctx.beginPath()
+    ctx.arc(8 * f, -10.5, 1.1, 0, Math.PI * 2)
+    ctx.stroke()
   } else if (!p.dead && !blink) {
-    // Диоген в бочке
+    // Диоген в бочке, с фонарём над кромкой («ищу человека»)
     const pifos = w.evoPithos ? 1.16 : 1
     ctx.setTransform(s * pifos, 0, 0, s * pifos, wx(p.x), wy(p.y))
     const tilt = Math.max(-0.16, Math.min(0.16, p.vx * 0.0007)) + Math.sin(p.dist * 0.06) * 0.03
     ctx.rotate(tilt)
     const squash = p.dashT > 0 ? 1.12 : 1
     ctx.scale(squash, 2 - squash)
+    const f = p.facing
     // бочка
     ctx.fillStyle = PAL.ink
     ctx.beginPath()
@@ -330,7 +382,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
     ctx.beginPath()
     ctx.roundRect(-16, -9, 32, 20, 8)
     ctx.clip()
-    ctx.strokeStyle = 'rgba(227, 169, 79, 0.32)'
+    ctx.strokeStyle = 'rgba(227, 169, 79, 0.3)'
     ctx.lineWidth = 1.8
     for (let i = 0; i < 3; i++) {
       const bx = ((p.dist * 0.7 * p.facing + i * 13.3) % 40 + 40) % 40 - 20
@@ -339,33 +391,124 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
       ctx.quadraticCurveTo(bx + 3, 1, bx, 12)
       ctx.stroke()
     }
-    // обручи
-    ctx.strokeStyle = 'rgba(243, 230, 200, 0.85)'
-    ctx.lineWidth = 1.6
+    // торцевая крутизна: тёмные дуги по краям
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)'
+    ctx.lineWidth = 2.2
+    ctx.beginPath(); ctx.moveTo(-14.5, -10); ctx.quadraticCurveTo(-12.5, 1, -14.5, 12); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(14.5, -10); ctx.quadraticCurveTo(12.5, 1, 14.5, 12); ctx.stroke()
+    // обручи с заклёпками
+    ctx.strokeStyle = 'rgba(243, 230, 200, 0.9)'
+    ctx.lineWidth = 1.7
     ctx.beginPath(); ctx.moveTo(-17, -3); ctx.lineTo(17, -3); ctx.stroke()
     ctx.beginPath(); ctx.moveTo(-17, 7); ctx.lineTo(17, 7); ctx.stroke()
+    ctx.fillStyle = 'rgba(227, 169, 79, 0.8)'
+    for (let i = 0; i < 4; i++) {
+      const nx = ((p.dist * 0.7 * p.facing + i * 10) % 40 + 40) % 40 - 20
+      if (nx > -15 && nx < 15) {
+        ctx.fillRect(nx - 0.7, -3.7, 1.4, 1.4)
+        ctx.fillRect(nx - 0.7, 6.3, 1.4, 1.4)
+      }
+    }
     ctx.restore()
-    // Диоген: голова с бородой и рука над кромкой
+    // гиматий валиком на кромке за спиной
+    ctx.fillStyle = PAL.ochre
+    ctx.beginPath()
+    ctx.ellipse(-9 * f, -9.6, 5, 2.4, -0.12 * f, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = PAL.blood
+    ctx.lineWidth = 0.8
+    ctx.beginPath()
+    ctx.moveTo(-12.6 * f, -10.6)
+    ctx.quadraticCurveTo(-9 * f, -12, -5.6 * f, -10.2)
+    ctx.stroke()
+    // Диоген: торс над кромкой
     ctx.fillStyle = PAL.ink
     ctx.beginPath()
-    ctx.arc(2 * p.facing, -17, 5.6, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.moveTo((2 - 5) * p.facing, -15)
-    ctx.lineTo(2 * p.facing, -6.5)
-    ctx.lineTo((2 + 5) * p.facing, -15)
+    ctx.moveTo(-4 * f, -8)
+    ctx.quadraticCurveTo(-5 * f, -14.5, -1 * f, -16)
+    ctx.lineTo(3.5 * f, -15.5)
+    ctx.quadraticCurveTo(5.5 * f, -11.5, 5 * f, -8)
     ctx.closePath()
     ctx.fill()
-    // повязка и глаз
-    ctx.fillStyle = PAL.ochre
-    ctx.fillRect(2 * p.facing - 5.6, -21, 11.2, 1.8)
-    ctx.fillStyle = PAL.cream
-    ctx.fillRect(2 * p.facing + 1.8 * p.facing, -18.6, 1.6, 1.6)
-    // рука на кромке
+    // ключица-насечка
+    ctx.strokeStyle = PAL.ochre
+    ctx.lineWidth = 0.7
+    ctx.beginPath()
+    ctx.moveTo(-2.4 * f, -13.2)
+    ctx.quadraticCurveTo(0.8 * f, -12, 3.2 * f, -12.8)
+    ctx.stroke()
+    // голова в профиль: нос клином, борода прядями
     ctx.fillStyle = PAL.ink
     ctx.beginPath()
-    ctx.arc(10 * p.facing, -10, 2.4, 0, Math.PI * 2)
+    ctx.arc(0.6 * f, -19.5, 4.2, 0, Math.PI * 2)
     ctx.fill()
+    ctx.beginPath()
+    ctx.moveTo((0.6 + 2.2) * f, -22)
+    ctx.lineTo((0.6 + 6.6) * f, -18.6)
+    ctx.lineTo((0.6 + 2) * f, -17)
+    ctx.closePath()
+    ctx.fill()
+    // борода клином вперёд
+    ctx.beginPath()
+    ctx.moveTo((0.6 - 4) * f, -18.2)
+    ctx.quadraticCurveTo((0.6 - 2.6) * f, -11.5, (0.6 + 1.8) * f, -10.6)
+    ctx.quadraticCurveTo((0.6 + 3.6) * f, -13.5, (0.6 + 3.4) * f, -16.6)
+    ctx.closePath()
+    ctx.fill()
+    ctx.strokeStyle = PAL.ochre
+    ctx.lineWidth = 0.55
+    ctx.beginPath(); ctx.moveTo((0.6 - 2) * f, -16); ctx.quadraticCurveTo((0.6 - 0.8) * f, -12.8, (0.6 + 1) * f, -11.8); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo((0.6 + 0.8) * f, -15.8); ctx.quadraticCurveTo((0.6 + 1.8) * f, -13.6, (0.6 + 2.4) * f, -12.6); ctx.stroke()
+    // красная повязка и глаз
+    ctx.fillStyle = PAL.blood
+    ctx.fillRect(0.6 * f - 4.4, -23, 8.8, 1.7)
+    ctx.fillStyle = PAL.cream
+    ctx.fillRect(0.6 * f + 1.9 * f, -20.8, 1.5, 1.5)
+    // задняя рука на кромке
+    ctx.fillStyle = PAL.ink
+    ctx.beginPath()
+    ctx.arc(-7.5 * f, -9.5, 2.2, 0, Math.PI * 2)
+    ctx.fill()
+    // передняя рука держит фонарь на палке, выше и дальше головы
+    ctx.strokeStyle = PAL.ink
+    ctx.lineWidth = 1.9
+    ctx.beginPath()
+    ctx.moveTo(3.5 * f, -12.5)
+    ctx.quadraticCurveTo(8 * f, -16, 12.5 * f, -22)
+    ctx.stroke()
+    const swing = Math.sin(p.dist * 0.06) * 0.12
+    ctx.save()
+    ctx.translate(13.5 * f, -24)
+    ctx.rotate(swing - tilt * 0.5)
+    // фонарик на верёвке под палкой
+    ctx.strokeStyle = PAL.ink
+    ctx.lineWidth = 0.9
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 2.6); ctx.stroke()
+    ctx.translate(0, 4)
+    // тёплый ореол
+    ctx.fillStyle = 'rgba(255, 217, 160, 0.28)'
+    ctx.beginPath()
+    ctx.arc(0, 2.4, 5.8, 0, Math.PI * 2)
+    ctx.fill()
+    // камера со светом
+    ctx.fillStyle = PAL.glow
+    ctx.beginPath()
+    ctx.moveTo(-1.9, 0.6); ctx.lineTo(1.9, 0.6); ctx.lineTo(2.5, 4.4); ctx.lineTo(-2.5, 4.4)
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = PAL.cream
+    ctx.beginPath()
+    ctx.ellipse(0, 2.6, 0.8, 1.5, 0, 0, Math.PI * 2)
+    ctx.fill()
+    // каркас: крышка, дно, рёбра
+    ctx.fillStyle = PAL.ink
+    ctx.fillRect(-2.6, -0.6, 5.2, 1.2)
+    ctx.fillRect(-3.1, 4.4, 6.2, 1.3)
+    ctx.strokeStyle = PAL.ink
+    ctx.lineWidth = 0.8
+    ctx.beginPath(); ctx.moveTo(-2, 0.7); ctx.lineTo(-2.6, 4.4); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(2, 0.7); ctx.lineTo(2.6, 4.4); ctx.stroke()
+    ctx.restore()
   }
 
   // --- псы ---
@@ -374,10 +517,10 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
     const sp = spr.dog
     const run = d.state === 1 ? Math.sin(w.t * 30 + d.seed * 9) * 0.08 : Math.sin(w.t * 10 + d.seed * 9) * 0.04
     const f = Math.floor(w.t * (d.state === 1 ? 14 : 8) + d.seed * 8) & 1
-    const sx = (s / 2) * d.facing
-    const sy = (s / 2) * (1 + run)
+    const sx = (s / sp.ss) * d.facing
+    const sy = (s / sp.ss) * (1 + run)
     ctx.setTransform(sx, 0, 0, sy, wx(d.x), wy(d.y))
-    ctx.drawImage(sp.img[f], -sp.ax * 2, -sp.ay * 2)
+    ctx.drawImage(sp.img[f], -sp.ax * sp.ss, -sp.ay * sp.ss)
   }
 
   // --- снаряды ---
@@ -437,15 +580,46 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
         ctx.stroke()
       }
     } else {
-      // сам фонарь
-      const lx = wx(lpos.x)
-      const ly = wy(lpos.y)
-      ctx.fillStyle = PAL.ink
-      ctx.fillRect(lx - 4 * s, ly - 6 * s, 8 * s, 10 * s)
+      // сам фонарь: купол с кольцом, стеклянная камера, пламя
+      ctx.setTransform(s, 0, 0, s, wx(lpos.x), wy(lpos.y))
+      ctx.rotate(Math.sin(w.t * 2.1) * 0.1)
       ctx.fillStyle = PAL.glow
-      ctx.fillRect(lx - 2.4 * s, ly - 4 * s, 4.8 * s, 6 * s)
+      ctx.beginPath()
+      ctx.moveTo(-3.4, -3.6)
+      ctx.lineTo(3.4, -3.6)
+      ctx.lineTo(4.4, 4)
+      ctx.lineTo(-4.4, 4)
+      ctx.closePath()
+      ctx.fill()
+      // язычок пламени
+      ctx.fillStyle = PAL.cream
+      ctx.beginPath()
+      ctx.ellipse(0, 0.8, 1.2, 2.2, 0, 0, Math.PI * 2)
+      ctx.fill()
+      // каркас
       ctx.fillStyle = PAL.ink
-      ctx.fillRect(lx - 1.4 * s, ly - 9 * s, 2.8 * s, 3 * s)
+      ctx.fillRect(-4.6, -5, 9.2, 1.7)
+      ctx.fillRect(-5.4, 4, 10.8, 1.8)
+      ctx.strokeStyle = PAL.ink
+      ctx.lineWidth = 1
+      ctx.beginPath(); ctx.moveTo(-3.6, -3.4); ctx.lineTo(-4.5, 4.2); ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(3.6, -3.4); ctx.lineTo(4.5, 4.2); ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(0, -3.4); ctx.lineTo(0, 4); ctx.stroke()
+      // купол и кольцо подвеса
+      ctx.fillStyle = PAL.ink
+      ctx.beginPath()
+      ctx.moveTo(-3.2, -5)
+      ctx.quadraticCurveTo(0, -7.6, 3.2, -5)
+      ctx.closePath()
+      ctx.fill()
+      ctx.lineWidth = 1.1
+      ctx.beginPath()
+      ctx.arc(0, -8.2, 1.5, 0, Math.PI * 2)
+      ctx.stroke()
+      // ножки
+      ctx.fillRect(-4.6, 5.8, 1.6, 1.4)
+      ctx.fillRect(3, 5.8, 1.6, 1.4)
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
     }
     // граница круга света — чтобы читалась зона урона
     if (!lowQ) {
