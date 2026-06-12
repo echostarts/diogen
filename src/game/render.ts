@@ -42,18 +42,25 @@ let fontFloat = ''
 function fonts(s: number): void {
   if (s === fontScale) return
   fontScale = s
-  fontNum = `700 ${Math.max(8, 13 * s)}px system-ui, sans-serif`
-  fontNumBig = `800 ${Math.max(10, 18 * s)}px system-ui, sans-serif`
-  fontFloat = `700 ${Math.max(9, 15 * s)}px system-ui, sans-serif`
+  fontNum = `700 ${Math.max(8, 13 * s)}px Philosopher, system-ui, sans-serif`
+  fontNumBig = `800 ${Math.max(10, 18 * s)}px Philosopher, system-ui, sans-serif`
+  fontFloat = `700 ${Math.max(9, 15 * s)}px Philosopher, system-ui, sans-serif`
 }
 
 const lpos = { x: 0, y: 0, r: 0 }
 
+// Детерминированный хэш клетки → [0,1) — для расстановки реквизита без ГПСЧ.
+function cellHash(cx: number, cy: number, salt: number): number {
+  let h = (cx * 374761393 + cy * 668265263 + salt * 1442695041) | 0
+  h = Math.imul(h ^ (h >>> 13), 1274126177)
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296
+}
+
 /**
  * Рисует мир в device-координатах. s — итоговый масштаб (letterbox*dpr),
- * ox/oy — смещение области вида в device px.
+ * ox/oy — смещение области вида в device px. lowQ — режим экономии филлрейта.
  */
-export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites, s: number, ox: number, oy: number): void {
+export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites, s: number, ox: number, oy: number, lowQ: boolean): void {
   fonts(s)
   const p = w.player
   // тряска
@@ -69,6 +76,11 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
   // world → device: dx = ox + s*(x - camX)
   const wx = (x: number) => ox + s * (x - camX)
   const wy = (y: number) => oy + s * (y - camY)
+  // отсечение: видимая область с запасом
+  const vx0 = camX - 70
+  const vx1 = camX + VIEW_W + 70
+  const vy0 = camY - 80
+  const vy1 = camY + VIEW_H + 80
 
   // --- фон ---
   ctx.setTransform(s, 0, 0, s, ox - s * camX, oy - s * camY)
@@ -78,6 +90,26 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
   } else {
     ctx.fillStyle = PAL.bg
     ctx.fillRect(camX, camY, VIEW_W, VIEW_H)
+  }
+
+  // --- реквизит агоры (детерминированная сетка, чисто декорация) ---
+  {
+    const CELL = 460
+    const c0x = Math.floor(vx0 / CELL)
+    const c1x = Math.floor(vx1 / CELL)
+    const c0y = Math.floor(vy0 / CELL)
+    const c1y = Math.floor(vy1 / CELL)
+    for (let cy = c0y; cy <= c1y; cy++) {
+      for (let cx = c0x; cx <= c1x; cx++) {
+        const h = cellHash(cx, cy, 7)
+        if (h > 0.62) continue
+        const type = (cellHash(cx, cy, 13) * spr.props.length) | 0
+        const px = (cx + 0.18 + cellHash(cx, cy, 21) * 0.64) * CELL
+        const py = (cy + 0.18 + cellHash(cx, cy, 33) * 0.64) * CELL
+        const img = spr.props[type]
+        ctx.drawImage(img, px - img.width / 2, py - img.height + 10)
+      }
+    }
   }
 
   // --- телеграф рывка босса (полоса на земле) ---
@@ -116,27 +148,31 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
     ctx.stroke()
   }
 
-  // --- тени ---
-  const sh = getShadow()
+  // --- тени (в лоу-режиме экономим филлрейт) ---
   ctx.setTransform(1, 0, 0, 1, 0, 0)
-  for (let i = 0; i < w.enemyCount; i++) {
-    const e = w.enemies[i]
-    const r2 = e.r * 2.2 * s
-    ctx.drawImage(sh, wx(e.x) - r2 / 2, wy(e.y + e.r * 0.72) - r2 / 4.8, r2, r2 / 2.4)
-  }
-  if (b.active && !b.dead) {
-    const r2 = b.r * 2.4 * s
-    ctx.drawImage(sh, wx(b.x) - r2 / 2, wy(b.y + b.r * 0.8) - r2 / 4.8, r2, r2 / 2.4)
-  }
-  if (!p.dead) {
-    const r2 = p.r * 3 * s
-    ctx.drawImage(sh, wx(p.x) - r2 / 2, wy(p.y + p.r * 0.85) - r2 / 4.8, r2, r2 / 2.4)
+  if (!lowQ) {
+    const sh = getShadow()
+    for (let i = 0; i < w.enemyCount; i++) {
+      const e = w.enemies[i]
+      if (e.x < vx0 || e.x > vx1 || e.y < vy0 || e.y > vy1) continue
+      const r2 = e.r * 2.2 * s
+      ctx.drawImage(sh, wx(e.x) - r2 / 2, wy(e.y + e.r * 0.72) - r2 / 4.8, r2, r2 / 2.4)
+    }
+    if (b.active && !b.dead) {
+      const r2 = b.r * 2.4 * s
+      ctx.drawImage(sh, wx(b.x) - r2 / 2, wy(b.y + b.r * 0.8) - r2 / 4.8, r2, r2 / 2.4)
+    }
+    if (!p.dead) {
+      const r2 = p.r * 3 * s
+      ctx.drawImage(sh, wx(p.x) - r2 / 2, wy(p.y + p.r * 0.85) - r2 / 4.8, r2, r2 / 2.4)
+    }
   }
 
   // --- оливки ---
   const gs = 24 * 0.9 * s
   for (let i = 0; i < w.gemCount; i++) {
     const g = w.gems[i]
+    if (g.x < vx0 || g.x > vx1 || g.y < vy0 || g.y > vy1) continue
     const bob = Math.sin(g.t * 4) * 2
     const k = g.v > 1 ? 1.25 : 1
     ctx.drawImage(spr.gem, wx(g.x) - (gs * k) / 2, wy(g.y + bob) - (gs * k) / 2, gs * k, gs * k)
@@ -149,6 +185,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
   for (let i = 0; i < w.enemyCount; i++) {
     const e = w.enemies[i]
     if (!e.elite) continue
+    if (e.x < vx0 || e.x > vx1 || e.y < vy0 || e.y > vy1) continue
     ctx.beginPath()
     ctx.arc(wx(e.x), wy(e.y + e.r * 0.72), e.r * 1.15 * s, 0, Math.PI * 2)
     ctx.stroke()
@@ -157,8 +194,10 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
   // --- враги ---
   for (let i = 0; i < w.enemyCount; i++) {
     const e = w.enemies[i]
+    if (e.x < vx0 || e.x > vx1 || e.y < vy0 || e.y > vy1) continue
     const sp = spr.enemies[e.kind]
-    const img = e.flash > 0 ? sp.white : sp.img
+    const f = (Math.floor(w.t * 7.5 + e.seed * 8) & 1)
+    const img = e.flash > 0 ? sp.white[f] : sp.img[f]
     const bob = Math.sin(w.t * 9 + e.seed * 6.28)
     const big = e.elite ? 1.35 : 1
     const sx = (s / 2) * big * e.facing * (1 - bob * 0.03)
@@ -168,9 +207,10 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
   }
 
   // --- босс ---
-  if (b.active && !b.dead) {
+  if (b.active && !b.dead && b.x > vx0 - 60 && b.x < vx1 + 60 && b.y > vy0 - 60 && b.y < vy1 + 60) {
     const sp = spr.boss
-    const img = b.flash > 0 ? sp.white : sp.img
+    const f = Math.floor(w.t * 5) & 1
+    const img = b.flash > 0 ? sp.white[f] : sp.img[f]
     const bob = Math.sin(w.t * 6)
     const lunge = b.phase === 2 ? 0.12 : 0
     const sx = (s / 2) * b.facing * (1 + lunge)
@@ -289,10 +329,11 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
     const d = w.dogs[i]
     const sp = spr.dog
     const run = d.state === 1 ? Math.sin(w.t * 30 + d.seed * 9) * 0.08 : Math.sin(w.t * 10 + d.seed * 9) * 0.04
+    const f = Math.floor(w.t * (d.state === 1 ? 14 : 8) + d.seed * 8) & 1
     const sx = (s / 2) * d.facing
     const sy = (s / 2) * (1 + run)
     ctx.setTransform(sx, 0, 0, sy, wx(d.x), wy(d.y))
-    ctx.drawImage(sp.img, -sp.ax * 2, -sp.ay * 2)
+    ctx.drawImage(sp.img[f], -sp.ax * 2, -sp.ay * 2)
   }
 
   // --- снаряды ---
@@ -363,11 +404,13 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
       ctx.fillRect(lx - 1.4 * s, ly - 9 * s, 2.8 * s, 3 * s)
     }
     // граница круга света — чтобы читалась зона урона
-    ctx.strokeStyle = 'rgba(255, 217, 160, 0.35)'
-    ctx.lineWidth = 1.5
-    ctx.beginPath()
-    ctx.arc(wx(lpos.x), wy(lpos.y), lpos.r * s, 0, Math.PI * 2)
-    ctx.stroke()
+    if (!lowQ) {
+      ctx.strokeStyle = 'rgba(255, 217, 160, 0.35)'
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.arc(wx(lpos.x), wy(lpos.y), lpos.r * s, 0, Math.PI * 2)
+      ctx.stroke()
+    }
   }
 
   // --- индикатор заряда рывка/шага вокруг героя ---
@@ -381,8 +424,10 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
   }
 
   // --- частицы ---
-  for (let i = 0; i < w.partCount; i++) {
+  const partMax = lowQ ? Math.min(w.partCount, 220) : w.partCount
+  for (let i = 0; i < partMax; i++) {
     const pt = w.parts[i]
+    if (pt.x < vx0 || pt.x > vx1 || pt.y < vy0 || pt.y > vy1) continue
     const a = pt.life / pt.max
     ctx.globalAlpha = a > 1 ? 1 : a
     ctx.fillStyle = PCOLS[pt.col]
@@ -396,6 +441,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
   ctx.textBaseline = 'middle'
   for (let i = 0; i < w.numCount; i++) {
     const n = w.nums[i]
+    if (n.x < vx0 || n.x > vx1 || n.y < vy0 || n.y > vy1) continue
     const a = 1 - n.t / 0.7
     ctx.globalAlpha = a < 0 ? 0 : a
     ctx.font = n.big ? fontNumBig : fontNum

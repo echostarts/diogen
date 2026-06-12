@@ -122,17 +122,84 @@ export class AudioSys {
     this.osc('sine', 58, 36, 0.09, 0.22, 0.16)
   }
 
-  private ambT = 2
-  /** Редкие тихие ноты лиры — фоновая атмосфера. Вызывается каждый тик рана. */
-  ambientStep(dt: number): void {
+  // --- музыка: степ-секвенсор (96 BPM, шестнадцатые), всё из осцилляторов ---
+  private musNext = 0
+  private musStep = 0
+  private musBar = 0
+
+  /** Нота в абсолютное время аудио-контекста. */
+  private note(type: OscillatorType, f: number, t: number, dur: number, vol: number, slide = 1): void {
+    if (!this.ctx || !this.master) return
+    const o = this.ctx.createOscillator()
+    const g = this.ctx.createGain()
+    o.type = type
+    o.frequency.setValueAtTime(Math.max(1, f), t)
+    if (slide !== 1) o.frequency.exponentialRampToValueAtTime(Math.max(1, f * slide), t + dur)
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.linearRampToValueAtTime(vol, t + 0.01)
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur)
+    o.connect(g)
+    g.connect(this.master)
+    o.start(t)
+    o.stop(t + dur + 0.03)
+  }
+
+  private noiseAt(t: number, dur: number, vol: number, f0: number, type: BiquadFilterType): void {
+    if (!this.ctx || !this.master || !this.noiseBuf) return
+    const src = this.ctx.createBufferSource()
+    src.buffer = this.noiseBuf
+    src.loop = true
+    const f = this.ctx.createBiquadFilter()
+    f.type = type
+    f.frequency.value = f0
+    const g = this.ctx.createGain()
+    g.gain.setValueAtTime(vol, t)
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur)
+    src.connect(f); f.connect(g); g.connect(this.master)
+    src.start(t)
+    src.stop(t + dur + 0.02)
+  }
+
+  /**
+   * Планировщик фоновой музыки. Вызывается каждый игровой тик в ране.
+   * intensity: 1 — ранняя игра, 2 — разгон, 3 — босс.
+   */
+  musicTick(intensity: number): void {
     if (!this.ctx || this.muted) return
-    this.ambT -= dt
-    if (this.ambT > 0) return
-    this.ambT = 4 + Math.random() * 4
-    const scale = [220, 261.63, 293.66, 329.63, 392]
-    const f = scale[(Math.random() * scale.length) | 0]
-    this.osc('triangle', f, f * 0.995, 1.3, 0.045)
-    if (Math.random() < 0.5) this.osc('triangle', f * 1.5, f * 1.5, 1.1, 0.025, 0.28)
+    const now = this.ctx.currentTime
+    const stepDur = 60 / 96 / 4
+    // ресинк после паузы/меню
+    if (this.musNext < now - 0.3) this.musNext = now + 0.05
+    while (this.musNext < now + 0.18) {
+      this.scheduleStep(this.musStep, this.musBar, this.musNext, intensity, stepDur)
+      this.musNext += stepDur
+      this.musStep = (this.musStep + 1) % 16
+      if (this.musStep === 0) this.musBar++
+    }
+  }
+
+  private scheduleStep(i: number, bar: number, t: number, inten: number, stepDur: number): void {
+    // эолийский спуск a–g–f–e; у босса — мрачное топтание e–f
+    const BASS = inten >= 3 ? [82.41, 87.31, 82.41, 77.78] : [110, 98, 87.31, 82.41]
+    const root = BASS[bar % 4]
+    // барабан-«пифос»
+    if (i === 0 || i === 10 || (inten >= 2 && i === 8) || (inten >= 3 && i === 4)) {
+      this.note('sine', 150, t, 0.12, 0.3, 0.35)
+    }
+    // глиняный «хэт»
+    if (inten >= 1 && (i & 3) === 2) this.noiseAt(t, 0.04, 0.028, 5200, 'highpass')
+    // бас держит тонику
+    if (i === 0) this.note('triangle', root, t, stepDur * 7.5, 0.1)
+    if (i === 8) this.note('triangle', root * (inten >= 3 ? 1.189 : 1), t, stepDur * 3.5, 0.08)
+    // лира — минорная пентатоника поверх, негромко и с паузами
+    if (inten >= 1 && (i & 1) === 0 && Math.random() < (inten >= 2 ? 0.5 : 0.34)) {
+      const PENT = [1, 1.189, 1.335, 1.498, 1.782, 2]
+      const f = root * 2 * PENT[(Math.random() * PENT.length) | 0]
+      this.note('triangle', f, t, 0.5, 0.055)
+      if (Math.random() < 0.3) this.note('triangle', f * 1.498, t + stepDur, 0.4, 0.03)
+    }
+    // раз в четыре такта — низкий «гонг»
+    if (i === 0 && bar % 4 === 0) this.note('sine', root * 0.5, t, 1.6, 0.12)
   }
 
   stinger(win: boolean): void {

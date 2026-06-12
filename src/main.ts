@@ -2,7 +2,10 @@ import { STEP, VIEW_H, VIEW_W } from './config'
 import { AudioSys } from './engine/audio'
 import { Input } from './engine/input'
 import { Game } from './game/game'
-import { CARD_H, CARD_W, CARD_Y, cardX, CHAR_BOX, SHOP_BTN, SHOP_PANEL, SHOP_ROW_H, SHOP_ROW_Y } from './game/screens'
+import {
+  CARD_H, CARD_W, CARD_Y, cardX, CHAR_BOX, END_MENU_BTN,
+  PAUSE_ROW_H, PAUSE_ROW_W, PAUSE_ROW_Y, SHOP_BTN, SHOP_PANEL, SHOP_ROW_H, SHOP_ROW_Y,
+} from './game/screens'
 
 interface Diag {
   state: string
@@ -51,6 +54,14 @@ const charOverride = charRaw !== null && charRaw !== '' ? Number(charRaw) | 0 : 
 const canvas = document.getElementById('game') as HTMLCanvasElement
 const ctx = canvas.getContext('2d', { alpha: false })!
 
+// Шрифт Philosopher (OFL) — канвас подхватит его, как только догрузится.
+try {
+  for (const [file, weight] of [['Philosopher-Bold.ttf', '700'], ['Philosopher-Regular.ttf', '400']] as const) {
+    const face = new FontFace('Philosopher', `url(${new URL('fonts/' + file, document.baseURI).href})`, { weight })
+    face.load().then((f) => document.fonts.add(f)).catch(() => { /* останется системный */ })
+  }
+} catch { /* старые браузеры — системный шрифт */ }
+
 const input = new Input()
 input.attach()
 const audio = new AudioSys()
@@ -63,14 +74,22 @@ if (params.get('debug') === '1') {
   ;(window as unknown as { __game: Game }).__game = game
 }
 
-// --- размеры и letterbox ---
+// --- размеры, letterbox и адаптивное качество ---
 let scale = 1
 let ox = 0
 let oy = 0
 let vignette: HTMLCanvasElement | null = null
+// на тач-устройствах сразу скромнее; при просадке fps падаем до 1.0
+let lowQ = false
+let dprCap = (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) ? 1.25 : 1.5
+let qSince = 0 // не дёргаем качество чаще раза в несколько секунд
+
+function getDpr(): number {
+  return lowQ ? 1 : Math.min(dprCap, window.devicePixelRatio || 1)
+}
 
 function resize(): void {
-  const dpr = Math.min(1.5, window.devicePixelRatio || 1)
+  const dpr = getDpr()
   const cw = Math.max(320, Math.floor(window.innerWidth * dpr))
   const ch = Math.max(240, Math.floor(window.innerHeight * dpr))
   if (canvas.width !== cw || canvas.height !== ch) {
@@ -99,11 +118,11 @@ const stick = game.stick
 let stickId = -1
 
 function toViewX(clientX: number): number {
-  const dpr = Math.min(1.5, window.devicePixelRatio || 1)
+  const dpr = getDpr()
   return (clientX * dpr - ox) / scale
 }
 function toViewY(clientY: number): number {
-  const dpr = Math.min(1.5, window.devicePixelRatio || 1)
+  const dpr = getDpr()
   return (clientY * dpr - oy) / scale
 }
 function inRect(vx: number, vy: number, r: { x: number; y: number; w: number; h: number }): boolean {
@@ -174,12 +193,22 @@ canvas.addEventListener('pointerdown', (e) => {
       if (row >= 0 && row < 4) game.shopBuy(row)
       break
     }
-    case 'pause':
+    case 'pause': {
+      // тап по пункту меню; мимо — продолжить
+      if (vx >= VIEW_W / 2 - PAUSE_ROW_W / 2 && vx <= VIEW_W / 2 + PAUSE_ROW_W / 2) {
+        const row = Math.floor((vy - PAUSE_ROW_Y) / PAUSE_ROW_H)
+        if (row >= 0 && row < 4 && vy >= PAUSE_ROW_Y) {
+          game.pauseAction(row)
+          break
+        }
+      }
       input.inject('pause')
       break
+    }
     case 'over':
     case 'win':
-      input.inject('restart')
+      if (inRect(vx, vy, END_MENU_BTN)) game.goTitle()
+      else input.inject('restart')
       break
   }
 })
@@ -276,7 +305,22 @@ function frame(now: number): void {
   }
   if (steps >= MAX_STEPS) acc = 0 // не даём спирали смерти раскрутиться
 
-  game.render(ctx, scale, ox, oy, vignette)
+  game.render(ctx, scale, ox, oy, vignette, lowQ)
+
+  // адаптивное качество: просели — упрощаем картинку, отпустило — возвращаем
+  qSince += dt
+  if (qSince > 4 && frameCount > 300) {
+    const f = fpsOver(now, 3000)
+    if (!lowQ && f < 50) {
+      lowQ = true
+      qSince = 0
+      resize()
+    } else if (lowQ && f > 57) {
+      lowQ = false
+      qSince = -6 // обратно повышаем неохотно
+      resize()
+    }
+  }
 
   frameTimes[frameHead] = now
   frameHead = (frameHead + 1) % 512

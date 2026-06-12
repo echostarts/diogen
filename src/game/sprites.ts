@@ -5,8 +5,9 @@ import { PAL } from '../config'
 import { RNG } from '../engine/rng'
 
 export interface Sprite {
-  img: HTMLCanvasElement
-  white: HTMLCanvasElement
+  /** Два кадра походки. */
+  img: HTMLCanvasElement[]
+  white: HTMLCanvasElement[]
   /** Точка привязки (центр) в пикселях канваса, и логический масштаб 2x. */
   ax: number
   ay: number
@@ -18,6 +19,8 @@ export interface Sprites {
   dog: Sprite
   glow: HTMLCanvasElement
   gem: HTMLCanvasElement
+  /** Реквизит агоры: колонна, герма, лежащая амфора. */
+  props: HTMLCanvasElement[]
   pattern: CanvasPattern | null
 }
 
@@ -29,30 +32,38 @@ function mk(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D]
   return [c, ctx]
 }
 
-type DrawFn = (c: CanvasRenderingContext2D, ink: string, ochre: string, cream: string) => void
+// st — фаза шага: +1 / −1 (зеркалит постановку ног между кадрами).
+type DrawFn = (c: CanvasRenderingContext2D, ink: string, ochre: string, cream: string, st: number) => void
 
-/** Собирает спрайт в двух вариантах: обычный и белый (хит-флэш). 2x масштаб. */
+/** Собирает спрайт: 2 кадра походки × (обычный + белый хит-флэш). 2x масштаб. */
 function sprite(w: number, h: number, draw: DrawFn): Sprite {
-  const [img, c1] = mk(w * 2, h * 2)
-  c1.scale(2, 2)
-  c1.translate(w / 2, h / 2)
-  draw(c1, PAL.ink, PAL.ochre, PAL.cream)
-  const [white, c2] = mk(w * 2, h * 2)
-  c2.scale(2, 2)
-  c2.translate(w / 2, h / 2)
-  draw(c2, PAL.cream, PAL.cream, PAL.cream)
+  const img: HTMLCanvasElement[] = []
+  const white: HTMLCanvasElement[] = []
+  for (let f = 0; f < 2; f++) {
+    const st = f === 0 ? 1 : -1
+    const [cv1, c1] = mk(w * 2, h * 2)
+    c1.scale(2, 2)
+    c1.translate(w / 2, h / 2)
+    draw(c1, PAL.ink, PAL.ochre, PAL.cream, st)
+    img.push(cv1)
+    const [cv2, c2] = mk(w * 2, h * 2)
+    c2.scale(2, 2)
+    c2.translate(w / 2, h / 2)
+    draw(c2, PAL.cream, PAL.cream, PAL.cream, st)
+    white.push(cv2)
+  }
   return { img, white, ax: w / 2, ay: h / 2 }
 }
 
 // --- враги ---
 
 // Торговец: согнулся под амфорой, семенит.
-const drawMerchant: DrawFn = (c, ink, ochre, cream) => {
+const drawMerchant: DrawFn = (c, ink, ochre, cream, st) => {
   c.fillStyle = ink
-  // ноги в шаге
+  // ноги в шаге (фаза зеркалит постановку)
   c.beginPath()
-  c.moveTo(-2, 2); c.lineTo(-7, 10); c.lineTo(-4.5, 10.5); c.lineTo(0, 4)
-  c.lineTo(4, 10.5); c.lineTo(6.5, 9.5); c.lineTo(3, 2)
+  c.moveTo(-2, 2); c.lineTo(-7 * st - 1, 10); c.lineTo(-4.5 * st - 1, 10.5); c.lineTo(0, 4)
+  c.lineTo(4 * st + 1, 10.5); c.lineTo(6.5 * st + 1, 9.5); c.lineTo(3, 2)
   c.closePath()
   c.fill()
   // корпус с наклоном вперёд
@@ -63,10 +74,10 @@ const drawMerchant: DrawFn = (c, ink, ochre, cream) => {
   c.beginPath()
   c.arc(4.5, -8.5, 3, 0, Math.PI * 2)
   c.fill()
-  // амфора на плече
+  // амфора на плече (покачивается в шаге)
   c.save()
   c.translate(-2.5, -10)
-  c.rotate(-0.5)
+  c.rotate(-0.5 + st * 0.06)
   c.beginPath()
   c.ellipse(0, 0, 3.2, 4.4, 0, 0, Math.PI * 2)
   c.fill()
@@ -83,7 +94,7 @@ const drawMerchant: DrawFn = (c, ink, ochre, cream) => {
 }
 
 // Стражник: круглый щит, гребень, копьё.
-const drawGuard: DrawFn = (c, ink, ochre, cream) => {
+const drawGuard: DrawFn = (c, ink, ochre, cream, st) => {
   // копьё
   c.strokeStyle = ink
   c.lineWidth = 1.4
@@ -96,9 +107,9 @@ const drawGuard: DrawFn = (c, ink, ochre, cream) => {
   c.moveTo(10, -10); c.lineTo(13, -13); c.lineTo(11.2, -8.4)
   c.closePath()
   c.fill()
-  // ноги
-  c.fillRect(-4, 6, 3, 6)
-  c.fillRect(2, 6, 3, 6)
+  // ноги в шаге
+  c.fillRect(-4 - st, 6, 3, 6)
+  c.fillRect(2 + st, 6 - st * 0.6, 3, 6 + st * 0.6)
   // щит
   c.beginPath()
   c.arc(0, 0, 8.6, 0, Math.PI * 2)
@@ -108,10 +119,12 @@ const drawGuard: DrawFn = (c, ink, ochre, cream) => {
   c.beginPath()
   c.arc(0, 0, 6.6, 0, Math.PI * 2)
   c.stroke()
-  c.fillStyle = cream
+  // эмблема-меандр на щите
+  c.strokeStyle = cream
+  c.lineWidth = 1.1
   c.beginPath()
-  c.arc(0, 0, 1.7, 0, Math.PI * 2)
-  c.fill()
+  c.moveTo(-3, 1.6); c.lineTo(-3, -1.6); c.lineTo(0, -1.6); c.lineTo(0, 0.4); c.lineTo(3, 0.4); c.lineTo(3, -1.6)
+  c.stroke()
   // шлем с гребнем
   c.fillStyle = ink
   c.beginPath()
@@ -126,21 +139,21 @@ const drawGuard: DrawFn = (c, ink, ochre, cream) => {
 }
 
 // Платоник: широкая мантия, борода, указует перстом в небо (на мир идей).
-const drawPlatonist: DrawFn = (c, ink, ochre, cream) => {
+const drawPlatonist: DrawFn = (c, ink, ochre, cream, st) => {
   c.fillStyle = ink
-  // мантия-колокол
+  // мантия-колокол (подол колышется)
   c.beginPath()
-  c.moveTo(-13, 14)
+  c.moveTo(-13 - st, 14)
   c.quadraticCurveTo(-11, -6, -5, -10)
   c.lineTo(5, -10)
-  c.quadraticCurveTo(11, -6, 13, 14)
+  c.quadraticCurveTo(11, -6, 13 + st, 14)
   c.closePath()
   c.fill()
   // складки
   c.strokeStyle = ochre
   c.lineWidth = 1
-  c.beginPath(); c.moveTo(-5, 0); c.lineTo(-7, 13); c.stroke()
-  c.beginPath(); c.moveTo(2, -2); c.lineTo(3, 13); c.stroke()
+  c.beginPath(); c.moveTo(-5, 0); c.lineTo(-7 - st, 13); c.stroke()
+  c.beginPath(); c.moveTo(2, -2); c.lineTo(3 + st, 13); c.stroke()
   // голова с бородой
   c.fillStyle = ink
   c.beginPath()
@@ -150,7 +163,9 @@ const drawPlatonist: DrawFn = (c, ink, ochre, cream) => {
   c.moveTo(-3.4, -11); c.lineTo(0, -4.5); c.lineTo(3.4, -11)
   c.closePath()
   c.fill()
-  // рука вверх + перст
+  // рука вверх + перст (чуть покачивается)
+  c.save()
+  c.rotate(st * 0.03)
   c.beginPath()
   c.moveTo(6, -9)
   c.quadraticCurveTo(10, -13, 10.5, -18)
@@ -160,20 +175,21 @@ const drawPlatonist: DrawFn = (c, ink, ochre, cream) => {
   c.fill()
   c.fillStyle = cream
   c.fillRect(10.6, -20.2, 1.6, 3)
+  c.restore()
   // лента на голове
   c.fillStyle = ochre
   c.fillRect(-4, -15, 8, 1.2)
 }
 
 // Софист: тощий, со свитком, бородка клином.
-const drawSophist: DrawFn = (c, ink, ochre, cream) => {
+const drawSophist: DrawFn = (c, ink, ochre, cream, st) => {
   c.fillStyle = ink
-  // узкий хитон
+  // узкий хитон, подол в шаге
   c.beginPath()
-  c.moveTo(-5, 12)
+  c.moveTo(-5 - st * 0.8, 12)
   c.lineTo(-3.5, -6)
   c.lineTo(3.5, -6)
-  c.lineTo(5, 12)
+  c.lineTo(5 + st * 0.8, 12)
   c.closePath()
   c.fill()
   // голова
@@ -185,7 +201,9 @@ const drawSophist: DrawFn = (c, ink, ochre, cream) => {
   c.moveTo(-1.8, -6.8); c.lineTo(0.6, -2.6); c.lineTo(2.6, -6.6)
   c.closePath()
   c.fill()
-  // рука со свитком
+  // рука со свитком (жестикулирует)
+  c.save()
+  c.rotate(st * 0.07)
   c.beginPath()
   c.moveTo(2, -4)
   c.lineTo(9, -7)
@@ -198,10 +216,11 @@ const drawSophist: DrawFn = (c, ink, ochre, cream) => {
   c.fillStyle = ochre
   c.fillRect(7.6, -9.6, 1, 2)
   c.fillRect(11.2, -9.6, 1, 2)
+  c.restore()
 }
 
 // Пёс Диогена.
-const drawDog: DrawFn = (c, ink, ochre, cream) => {
+const drawDog: DrawFn = (c, ink, ochre, cream, st) => {
   c.fillStyle = ink
   // корпус
   c.beginPath()
@@ -220,17 +239,17 @@ const drawDog: DrawFn = (c, ink, ochre, cream) => {
   c.moveTo(5.6, -4.6); c.lineTo(6.6, -7); c.lineTo(7.8, -4.8)
   c.closePath()
   c.fill()
-  // лапы
-  c.fillRect(-5.5, 2, 1.8, 4.4)
-  c.fillRect(-1.5, 2.4, 1.8, 4)
-  c.fillRect(2.5, 2, 1.8, 4.4)
-  c.fillRect(5.2, 2.4, 1.6, 3.6)
+  // лапы в беге (две пары крест-накрест)
+  c.fillRect(-5.5 - st * 1.4, 2, 1.8, 4.4)
+  c.fillRect(-1.5 + st * 1.2, 2.4, 1.8, 4)
+  c.fillRect(2.5 - st * 1.2, 2, 1.8, 4.4)
+  c.fillRect(5.2 + st * 1.4, 2.4, 1.6, 3.6)
   // хвост крючком
   c.strokeStyle = ink
   c.lineWidth = 1.6
   c.beginPath()
   c.moveTo(-6.5, -1)
-  c.quadraticCurveTo(-10, -4, -8.5, -6.5)
+  c.quadraticCurveTo(-10, -4 + st, -8.5, -6.5 + st * 0.7)
   c.stroke()
   // ошейник
   c.fillStyle = ochre
@@ -241,10 +260,10 @@ const drawDog: DrawFn = (c, ink, ochre, cream) => {
 }
 
 // Сам Платон: платоник в полтора роста, с лавром и свитком «Государства».
-const drawPlato: DrawFn = (c, ink, ochre, cream) => {
+const drawPlato: DrawFn = (c, ink, ochre, cream, st) => {
   c.save()
   c.scale(1.55, 1.55)
-  drawPlatonist(c, ink, ochre, cream)
+  drawPlatonist(c, ink, ochre, cream, st)
   c.restore()
   // лавровый венок
   c.strokeStyle = ochre
@@ -268,27 +287,27 @@ const drawPlato: DrawFn = (c, ink, ochre, cream) => {
 }
 
 // Александр: гребень, плащ, меч. Крупный.
-const drawBoss: DrawFn = (c, ink, ochre, cream) => {
-  // плащ за спиной
+const drawBoss: DrawFn = (c, ink, ochre, cream, st) => {
+  // плащ за спиной (колышется)
   c.fillStyle = '#3a2014'
   c.beginPath()
   c.moveTo(-8, -18)
-  c.quadraticCurveTo(-26, 0, -20, 26)
+  c.quadraticCurveTo(-26 - st * 2, 0, -20 - st * 3, 26)
   c.lineTo(-6, 20)
   c.closePath()
   c.fill()
   c.fillStyle = ink
   // ноги в стойке
   c.beginPath()
-  c.moveTo(-9, 8); c.lineTo(-13, 27); c.lineTo(-7.5, 27.5); c.lineTo(-3, 12)
+  c.moveTo(-9, 8); c.lineTo(-13 - st, 27); c.lineTo(-7.5 - st, 27.5); c.lineTo(-3, 12)
   c.closePath(); c.fill()
   c.beginPath()
-  c.moveTo(9, 8); c.lineTo(13, 27); c.lineTo(7.5, 27.5); c.lineTo(3, 12)
+  c.moveTo(9, 8); c.lineTo(13 + st, 27); c.lineTo(7.5 + st, 27.5); c.lineTo(3, 12)
   c.closePath(); c.fill()
   // поножи
   c.fillStyle = cream
-  c.fillRect(-12.2, 18, 4, 1.6)
-  c.fillRect(8.2, 18, 4, 1.6)
+  c.fillRect(-12.2 - st, 18, 4, 1.6)
+  c.fillRect(8.2 + st, 18, 4, 1.6)
   // торс-кираса
   c.fillStyle = ink
   c.beginPath()
@@ -315,7 +334,7 @@ const drawBoss: DrawFn = (c, ink, ochre, cream) => {
   c.fillStyle = ochre
   c.beginPath()
   c.moveTo(-9, -22)
-  c.quadraticCurveTo(0, -34, 9, -22)
+  c.quadraticCurveTo(0, -34 - st, 9, -22)
   c.quadraticCurveTo(0, -26, -9, -22)
   c.closePath()
   c.fill()
@@ -366,6 +385,78 @@ function makeGem(): HTMLCanvasElement {
   c.quadraticCurveTo(2.4, -7.4, 4, -7)
   c.stroke()
   return cv
+}
+
+/** Реквизит агоры — полупрозрачные силуэты, чтобы не путались с актёрами. */
+function makeProps(): HTMLCanvasElement[] {
+  const out: HTMLCanvasElement[] = []
+  // дорическая колонна (слегка побитая)
+  {
+    const [cv, c] = mk(72, 150)
+    c.globalAlpha = 0.34
+    c.fillStyle = PAL.ink
+    c.fillRect(10, 132, 52, 10)   // стилобат
+    c.fillRect(16, 124, 40, 8)
+    c.fillRect(20, 28, 32, 96)    // ствол
+    c.fillStyle = PAL.bgDark
+    c.globalAlpha = 0.5
+    for (let i = 0; i < 4; i++) c.fillRect(23 + i * 8, 30, 2.4, 92) // каннелюры
+    c.globalAlpha = 0.34
+    c.fillStyle = PAL.ink
+    c.fillRect(14, 18, 44, 10)    // эхин
+    c.fillRect(10, 8, 52, 10)     // абака, скол справа
+    c.clearRect(48, 8, 14, 7)
+    out.push(cv)
+  }
+  // герма (столб с головой Гермеса)
+  {
+    const [cv, c] = mk(56, 120)
+    c.globalAlpha = 0.34
+    c.fillStyle = PAL.ink
+    c.fillRect(12, 104, 32, 8)
+    c.beginPath()
+    c.moveTo(16, 104); c.lineTo(20, 30); c.lineTo(36, 30); c.lineTo(40, 104)
+    c.closePath()
+    c.fill()
+    c.beginPath()
+    c.arc(28, 20, 10, 0, Math.PI * 2) // голова
+    c.fill()
+    c.beginPath() // борода
+    c.moveTo(21, 24); c.lineTo(28, 36); c.lineTo(35, 24)
+    c.closePath()
+    c.fill()
+    c.globalAlpha = 0.5
+    c.fillStyle = PAL.ochre
+    c.fillRect(19, 12, 18, 2.4) // лента
+    out.push(cv)
+  }
+  // большая лежащая амфора с трещиной
+  {
+    const [cv, c] = mk(110, 64)
+    c.globalAlpha = 0.34
+    c.translate(55, 34)
+    c.rotate(0.12)
+    c.fillStyle = PAL.ink
+    c.beginPath()
+    c.ellipse(0, 0, 34, 19, 0, 0, Math.PI * 2)
+    c.fill()
+    c.fillRect(30, -8, 16, 16) // горло
+    c.fillRect(44, -11, 6, 22) // венчик
+    c.globalAlpha = 0.55
+    c.strokeStyle = PAL.ochre
+    c.lineWidth = 2.4
+    c.beginPath()
+    c.ellipse(0, 0, 24, 12, 0, 0.6, 2.5)
+    c.stroke()
+    c.globalAlpha = 0.6
+    c.strokeStyle = PAL.bg
+    c.lineWidth = 2
+    c.beginPath()
+    c.moveTo(-20, -14); c.lineTo(-12, -2); c.lineTo(-18, 8)
+    c.stroke()
+    out.push(cv)
+  }
+  return out
 }
 
 /** Тайл фона: терракота, пятна обжига, меандр, редкие силуэты утвари. */
@@ -464,6 +555,7 @@ export function buildSprites(ctx: CanvasRenderingContext2D): Sprites {
     dog: sprite(28, 22, drawDog),
     glow: makeGlow(),
     gem: makeGem(),
+    props: makeProps(),
     pattern: makePattern(ctx),
   }
 }

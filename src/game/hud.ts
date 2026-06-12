@@ -39,7 +39,7 @@ export class Hud {
       this.lastLevel = w.level
       this.levelStr = 'УР ' + w.level
     }
-    ctx.font = '700 15px system-ui, sans-serif'
+    ctx.font = '700 15px Philosopher, system-ui, sans-serif'
     ctx.textAlign = 'left'
     ctx.textBaseline = 'top'
     ctx.fillStyle = PAL.ink
@@ -64,7 +64,7 @@ export class Hud {
       this.lastHpKey = hpKey
       this.hpStr = Math.max(0, Math.ceil(p.hp)) + '/' + p.maxHp
     }
-    ctx.font = '700 12px system-ui, sans-serif'
+    ctx.font = '700 12px Philosopher, system-ui, sans-serif'
     ctx.fillStyle = PAL.cream
     ctx.fillText(this.hpStr, hpX + 6, hpY + 2.5)
 
@@ -76,7 +76,7 @@ export class Hud {
       const s = sec % 60
       this.timeStr = m + ':' + (s < 10 ? '0' : '') + s
     }
-    ctx.font = '800 32px system-ui, sans-serif'
+    ctx.font = '800 32px Philosopher, system-ui, sans-serif'
     ctx.textAlign = 'center'
     ctx.fillStyle = PAL.ink
     ctx.fillText(this.timeStr, VIEW_W / 2 + 2, 24)
@@ -89,10 +89,10 @@ export class Hud {
       this.killsStr = String(w.kills)
     }
     ctx.textAlign = 'right'
-    ctx.font = '700 13px system-ui, sans-serif'
+    ctx.font = '700 13px Philosopher, system-ui, sans-serif'
     ctx.fillStyle = 'rgba(243, 230, 200, 0.75)'
     ctx.fillText('ПЕРЕУБЕЖДЕНО', VIEW_W - 10, 22)
-    ctx.font = '800 22px system-ui, sans-serif'
+    ctx.font = '800 22px Philosopher, system-ui, sans-serif'
     ctx.fillStyle = PAL.cream
     ctx.fillText(this.killsStr, VIEW_W - 10, 36)
 
@@ -194,7 +194,7 @@ export class Hud {
       const bx = VIEW_W - bw - 12
       const by = VIEW_H - 30
       ctx.textAlign = 'left'
-      ctx.font = '700 11px system-ui, sans-serif'
+      ctx.font = '700 11px Philosopher, system-ui, sans-serif'
       ctx.fillStyle = 'rgba(243, 230, 200, 0.75)'
       ctx.fillText(coarse ? word + ' — ТАП СПРАВА' : word + ' — ПРОБЕЛ', bx, by - 14)
       ctx.fillStyle = 'rgba(33, 21, 16, 0.7)'
@@ -216,7 +216,7 @@ export class Hud {
       const bx = (VIEW_W - bw) / 2
       const by = 64
       ctx.textAlign = 'center'
-      ctx.font = '800 15px system-ui, sans-serif'
+      ctx.font = '800 15px Philosopher, system-ui, sans-serif'
       ctx.fillStyle = PAL.ink
       ctx.fillText('АЛЕКСАНДР', VIEW_W / 2 + 1, by - 17)
       ctx.fillStyle = PAL.ochre
@@ -235,7 +235,7 @@ export class Hud {
       const a = Math.min(1, w.captionT / 0.5)
       ctx.globalAlpha = a
       ctx.textAlign = 'center'
-      ctx.font = '800 26px system-ui, sans-serif'
+      ctx.font = '800 26px Philosopher, system-ui, sans-serif'
       ctx.fillStyle = PAL.ink
       ctx.fillText(w.caption, VIEW_W / 2 + 2, VIEW_H - 106)
       ctx.fillStyle = PAL.glow

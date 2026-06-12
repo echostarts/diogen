@@ -53,19 +53,19 @@ export function drawTitle(
   meander(ctx, VIEW_H - 70, 0.5)
   ctx.textAlign = 'center'
   ctx.textBaseline = 'alphabetic'
-  ctx.font = '900 110px system-ui, sans-serif'
+  ctx.font = '900 110px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = PAL.ink
   ctx.fillText('ДИОГЕН', VIEW_W / 2 + 5, 256)
   ctx.fillStyle = PAL.cream
   ctx.fillText('ДИОГЕН', VIEW_W / 2, 250)
-  ctx.font = '700 24px system-ui, sans-serif'
+  ctx.font = '700 24px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = PAL.ochre
   ctx.fillText('АФИНЫ, 350 ГОД ДО Н. Э. ГРАЖДАНЕ ВОЗМУЩЕНЫ.', VIEW_W / 2, 300)
-  ctx.font = '400 17px system-ui, sans-serif'
+  ctx.font = '400 17px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = 'rgba(243, 230, 200, 0.85)'
   ctx.fillText('Пять минут до прихода Александра. Граждане уже в пути.', VIEW_W / 2, 336)
   if (best) {
-    ctx.font = '600 16px system-ui, sans-serif'
+    ctx.font = '600 16px Philosopher, system-ui, sans-serif'
     ctx.fillStyle = 'rgba(227, 169, 79, 0.95)'
     ctx.fillText(best, VIEW_W / 2, 366)
   }
@@ -79,18 +79,18 @@ export function drawTitle(
   ctx.strokeStyle = locked ? 'rgba(243, 230, 200, 0.35)' : 'rgba(227, 169, 79, 0.75)'
   ctx.lineWidth = 2
   ctx.stroke()
-  ctx.font = '700 12px system-ui, sans-serif'
+  ctx.font = '700 12px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = 'rgba(243, 230, 200, 0.6)'
   ctx.fillText('ГЕРОЙ — ◀ ▶', VIEW_W / 2, B.y + 18)
-  ctx.font = '900 26px system-ui, sans-serif'
+  ctx.font = '900 26px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = locked ? 'rgba(243, 230, 200, 0.5)' : PAL.cream
   ctx.fillText(chr.name, VIEW_W / 2, B.y + 48)
   // стрелки
-  ctx.font = '900 30px system-ui, sans-serif'
+  ctx.font = '900 30px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = PAL.ochre
   ctx.fillText('◀', B.x + 34, B.y + 52)
   ctx.fillText('▶', B.x + B.w - 34, B.y + 52)
-  ctx.font = '400 14px system-ui, sans-serif'
+  ctx.font = '400 14px Philosopher, system-ui, sans-serif'
   if (locked) {
     ctx.fillStyle = PAL.ochre
     ctx.fillText(
@@ -102,7 +102,7 @@ export function drawTitle(
     ctx.fillText(chr.desc, VIEW_W / 2, B.y + 74)
   }
 
-  ctx.font = '600 16px system-ui, sans-serif'
+  ctx.font = '600 16px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = 'rgba(243, 230, 200, 0.9)'
   const lines = coarse
     ? ['Палец слева — стик · тап справа — рывок/шаг', 'Атаки сами по себе. Как и вы.']
@@ -113,7 +113,7 @@ export function drawTitle(
 
   const pulse = 0.6 + 0.4 * Math.sin(time * 4)
   ctx.globalAlpha = pulse
-  ctx.font = '800 28px system-ui, sans-serif'
+  ctx.font = '800 28px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = PAL.glow
   ctx.fillText(coarse ? 'ТАП — НАЧАТЬ' : 'ENTER — НАЧАТЬ', VIEW_W / 2, 596)
   ctx.globalAlpha = 1
@@ -132,10 +132,10 @@ export function drawShopButton(ctx: CanvasRenderingContext2D, wallet: number, co
   ctx.lineWidth = 2
   ctx.stroke()
   ctx.textAlign = 'center'
-  ctx.font = '800 17px system-ui, sans-serif'
+  ctx.font = '800 17px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = PAL.ochre
   ctx.fillText(coarse ? 'ЛАВКА' : 'ЛАВКА — L', b.x + b.w / 2, b.y + 19)
-  ctx.font = '600 13px system-ui, sans-serif'
+  ctx.font = '600 13px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = 'rgba(243, 230, 200, 0.85)'
   ctx.fillText('черепков: ' + wallet, b.x + b.w / 2, b.y + 36)
 }
@@ -164,10 +164,10 @@ export function drawShop(ctx: CanvasRenderingContext2D, rows: ShopRow[], sel: nu
   ctx.lineWidth = 2.5
   ctx.stroke()
   ctx.textAlign = 'center'
-  ctx.font = '900 34px system-ui, sans-serif'
+  ctx.font = '900 34px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = PAL.cream
   ctx.fillText('ЛАВКА ДИОГЕНА', VIEW_W / 2, P.y + 52)
-  ctx.font = '600 15px system-ui, sans-serif'
+  ctx.font = '600 15px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = PAL.ochre
   ctx.fillText('ЧЕРЕПКОВ: ' + wallet + ' · цены окончательные, сдачи нет', VIEW_W / 2, P.y + 78)
 
@@ -184,10 +184,10 @@ export function drawShop(ctx: CanvasRenderingContext2D, rows: ShopRow[], sel: nu
       ctx.strokeRect(P.x + 14, y - 6, P.w - 28, SHOP_ROW_H - 8)
     }
     ctx.textAlign = 'left'
-    ctx.font = '800 18px system-ui, sans-serif'
+    ctx.font = '800 18px Philosopher, system-ui, sans-serif'
     ctx.fillStyle = isSel ? PAL.glow : PAL.cream
     ctx.fillText(r.name, P.x + 32, y + 16)
-    ctx.font = '400 13px system-ui, sans-serif'
+    ctx.font = '400 13px Philosopher, system-ui, sans-serif'
     ctx.fillStyle = 'rgba(243, 230, 200, 0.75)'
     ctx.fillText(r.desc, P.x + 32, y + 36)
     // пипсы уровня
@@ -196,7 +196,7 @@ export function drawShop(ctx: CanvasRenderingContext2D, rows: ShopRow[], sel: nu
       ctx.fillRect(P.x + 340 + k * 16, y + 6, 12, 6)
     }
     ctx.textAlign = 'right'
-    ctx.font = '800 17px system-ui, sans-serif'
+    ctx.font = '800 17px Philosopher, system-ui, sans-serif'
     if (r.cost < 0) {
       ctx.fillStyle = 'rgba(243, 230, 200, 0.5)'
       ctx.fillText('ВЫКУПЛЕНО', P.x + P.w - 32, y + 22)
@@ -207,7 +207,7 @@ export function drawShop(ctx: CanvasRenderingContext2D, rows: ShopRow[], sel: nu
   }
 
   ctx.textAlign = 'center'
-  ctx.font = '600 15px system-ui, sans-serif'
+  ctx.font = '600 15px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = 'rgba(243, 230, 200, 0.7)'
   ctx.fillText(
     coarse ? 'тап по строке — купить · тап мимо — выход' : '↑ ↓ и ENTER — купить · ESC — выход',
@@ -228,10 +228,10 @@ export function cardX(i: number): number {
 export function drawLevelup(ctx: CanvasRenderingContext2D, w: World, choices: number[], sel: number, coarse: boolean): void {
   dim(ctx, 0.6)
   ctx.textAlign = 'center'
-  ctx.font = '900 40px system-ui, sans-serif'
+  ctx.font = '900 40px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = PAL.cream
   ctx.fillText('СТАЛО ЯСНЕЕ', VIEW_W / 2, 150)
-  ctx.font = '600 17px system-ui, sans-serif'
+  ctx.font = '600 17px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = PAL.ochre
   ctx.fillText('УРОВЕНЬ ' + w.level + ' — выберите одно', VIEW_W / 2, 182)
 
@@ -256,18 +256,18 @@ export function drawLevelup(ctx: CanvasRenderingContext2D, w: World, choices: nu
     ctx.lineWidth = isSel ? 4 : 2
     ctx.stroke()
     // номер-горячая клавиша
-    ctx.font = '700 15px system-ui, sans-serif'
+    ctx.font = '700 15px Philosopher, system-ui, sans-serif'
     ctx.textAlign = 'left'
     ctx.fillStyle = 'rgba(243, 230, 200, 0.5)'
     ctx.fillText(String(i + 1), x + 14, y0 + 24)
     drawIcon(ctx, def.id, x + cw / 2, y0 + 62, 52)
     ctx.textAlign = 'center'
-    ctx.font = '800 21px system-ui, sans-serif'
+    ctx.font = '800 21px Philosopher, system-ui, sans-serif'
     ctx.fillStyle = isSel ? PAL.glow : PAL.cream
     const cur = def.lvl(w)
     const tag = def.max <= 5 ? (cur > 0 ? '  ' + roman(cur + 1) : '') : ''
     ctx.fillText(def.name + tag, x + cw / 2, y0 + 118)
-    ctx.font = '400 14px system-ui, sans-serif'
+    ctx.font = '400 14px Philosopher, system-ui, sans-serif'
     ctx.fillStyle = 'rgba(243, 230, 200, 0.85)'
     wrapText(ctx, def.desc, x + cw / 2, y0 + 145, cw - 44, 19)
     // пипсы уровня
@@ -281,54 +281,78 @@ export function drawLevelup(ctx: CanvasRenderingContext2D, w: World, choices: nu
     ctx.restore()
   }
   ctx.textAlign = 'center'
-  ctx.font = '600 16px system-ui, sans-serif'
+  ctx.font = '600 16px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = 'rgba(243, 230, 200, 0.7)'
   ctx.fillText(coarse ? 'тап по карте — взять' : '←  → и ENTER, или 1 / 2 / 3', VIEW_W / 2, y0 + ch + 46)
 }
 
-export function drawPause(ctx: CanvasRenderingContext2D, statLines: string[]): void {
-  dim(ctx, 0.55)
+// Геометрия пунктов меню паузы — и для тапов.
+export const PAUSE_ROW_Y = 268
+export const PAUSE_ROW_H = 52
+export const PAUSE_ROW_W = 360
+
+export function drawPause(ctx: CanvasRenderingContext2D, statLines: string[], sel: number, muted: boolean, coarse: boolean): void {
+  dim(ctx, 0.6)
   ctx.textAlign = 'center'
-  ctx.font = '900 52px system-ui, sans-serif'
+  ctx.font = '900 52px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = PAL.cream
-  ctx.fillText('ПЕРЕДЫШКА', VIEW_W / 2, 200)
-  ctx.font = '400 18px system-ui, sans-serif'
+  ctx.fillText('ПЕРЕДЫШКА', VIEW_W / 2, 188)
+  ctx.font = '400 18px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = PAL.ochre
-  ctx.fillText('Толпа подождёт. Ей не к спеху, вам — тем более.', VIEW_W / 2, 240)
-  ctx.font = '600 16px system-ui, sans-serif'
-  ctx.fillStyle = 'rgba(243, 230, 200, 0.85)'
-  for (let i = 0; i < statLines.length; i++) {
-    ctx.fillText(statLines[i], VIEW_W / 2, 300 + i * 26)
+  ctx.fillText('Толпа подождёт. Ей не к спеху, вам — тем более.', VIEW_W / 2, 224)
+
+  const items = ['ПРОДОЛЖИТЬ', 'ЗАНОВО', muted ? 'ЗВУК: ВЫКЛ' : 'ЗВУК: ВКЛ', 'В МЕНЮ']
+  for (let i = 0; i < items.length; i++) {
+    const y = PAUSE_ROW_Y + i * PAUSE_ROW_H
+    const isSel = i === sel
+    ctx.fillStyle = isSel ? 'rgba(227, 169, 79, 0.16)' : 'rgba(33, 21, 16, 0.55)'
+    ctx.beginPath()
+    ctx.roundRect(VIEW_W / 2 - PAUSE_ROW_W / 2, y, PAUSE_ROW_W, PAUSE_ROW_H - 10, 9)
+    ctx.fill()
+    ctx.strokeStyle = isSel ? PAL.ochre : 'rgba(243, 230, 200, 0.3)'
+    ctx.lineWidth = isSel ? 2.5 : 1.5
+    ctx.stroke()
+    ctx.font = '800 20px Philosopher, system-ui, sans-serif'
+    ctx.fillStyle = isSel ? PAL.glow : PAL.cream
+    ctx.fillText(items[i], VIEW_W / 2, y + 28)
   }
-  ctx.font = '800 22px system-ui, sans-serif'
-  ctx.fillStyle = PAL.glow
-  ctx.fillText('ESC — ПРОДОЛЖИТЬ', VIEW_W / 2, 560)
+
+  // краткая сводка рана под меню
+  ctx.font = '600 15px Philosopher, system-ui, sans-serif'
+  ctx.fillStyle = 'rgba(243, 230, 200, 0.75)'
+  if (statLines.length > 0) ctx.fillText(statLines[0], VIEW_W / 2, PAUSE_ROW_Y + 4 * PAUSE_ROW_H + 26)
+  ctx.font = '600 15px Philosopher, system-ui, sans-serif'
+  ctx.fillStyle = 'rgba(243, 230, 200, 0.6)'
+  ctx.fillText(
+    coarse ? 'тап по пункту · тап мимо — продолжить' : '↑ ↓ и ENTER · ESC — продолжить',
+    VIEW_W / 2, PAUSE_ROW_Y + 4 * PAUSE_ROW_H + 56,
+  )
 }
 
 export function drawEnd(ctx: CanvasRenderingContext2D, win: boolean, statLines: string[], time: number, coarse: boolean): void {
   dim(ctx, win ? 0.55 : 0.68)
   meander(ctx, 72, 0.35)
   ctx.textAlign = 'center'
-  ctx.font = '900 62px system-ui, sans-serif'
+  ctx.font = '900 62px Philosopher, system-ui, sans-serif'
   const title = win ? 'АЛЕКСАНДР ОТОШЁЛ' : 'ДИОГЕН ПАЛ'
   ctx.fillStyle = PAL.ink
   ctx.fillText(title, VIEW_W / 2 + 4, 178)
   ctx.fillStyle = win ? PAL.glow : PAL.cream
   ctx.fillText(title, VIEW_W / 2, 174)
-  ctx.font = '500 20px system-ui, sans-serif'
+  ctx.font = '500 20px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = PAL.ochre
   ctx.fillText(
     win ? 'Солнце снова ничьё. Можно загорать.' : 'Бочка освободилась. Желающие — в очередь.',
     VIEW_W / 2, 218,
   )
   // первая строка — общие цифры, дальше — снаряжение в две колонки
-  ctx.font = '600 18px system-ui, sans-serif'
+  ctx.font = '600 18px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = 'rgba(243, 230, 200, 0.95)'
   if (statLines.length > 0) ctx.fillText(statLines[0], VIEW_W / 2, 274)
-  ctx.font = '700 15px system-ui, sans-serif'
+  ctx.font = '700 15px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = PAL.ochre
   ctx.fillText('СНАРЯЖЕНИЕ', VIEW_W / 2, 322)
-  ctx.font = '500 15px system-ui, sans-serif'
+  ctx.font = '500 15px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = 'rgba(243, 230, 200, 0.85)'
   let li = 0
   for (let i = 0; i < statLines.length; i++) {
@@ -341,8 +365,23 @@ export function drawEnd(ctx: CanvasRenderingContext2D, win: boolean, statLines: 
   }
   const pulse = 0.6 + 0.4 * Math.sin(time * 4)
   ctx.globalAlpha = pulse
-  ctx.font = '800 26px system-ui, sans-serif'
+  ctx.font = '800 26px Philosopher, system-ui, sans-serif'
   ctx.fillStyle = PAL.glow
   ctx.fillText(coarse ? 'ТАП — ЕЩЁ РАЗ' : 'R / ENTER — ЕЩЁ РАЗ', VIEW_W / 2, 622)
   ctx.globalAlpha = 1
+  // выход в главное меню
+  const m = END_MENU_BTN
+  ctx.fillStyle = 'rgba(33, 21, 16, 0.6)'
+  ctx.beginPath()
+  ctx.roundRect(m.x, m.y, m.w, m.h, 8)
+  ctx.fill()
+  ctx.strokeStyle = 'rgba(243, 230, 200, 0.4)'
+  ctx.lineWidth = 1.5
+  ctx.stroke()
+  ctx.font = '700 15px Philosopher, system-ui, sans-serif'
+  ctx.fillStyle = 'rgba(243, 230, 200, 0.85)'
+  ctx.fillText(coarse ? 'В МЕНЮ' : 'ESC — В МЕНЮ', m.x + m.w / 2, m.y + 26)
 }
+
+// Кнопка «в меню» на финальных экранах.
+export const END_MENU_BTN = { x: 24, y: VIEW_H - 70, w: 180, h: 42 }

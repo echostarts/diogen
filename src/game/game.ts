@@ -81,6 +81,7 @@ export class Game {
   meta: Meta = { w: 0, hp: 0, dmg: 0, spd: 0, mag: 0, chars: 1 }
   charId = 0
   shopSel = 0
+  pauseSel = 0
   private readonly shopRowsBuf: ShopRow[] = []
   private heartT = 0
   private bestLine: string | null = null
@@ -299,6 +300,7 @@ export class Game {
       case 'run': {
         if (inp.wasPressed('pause')) {
           this.state = 'pause'
+          this.pauseSel = 0
           this.buildStats(true)
           this.audio.ui()
           break
@@ -313,7 +315,9 @@ export class Game {
           dash = this.bot.dash
         }
         this.worldTick(dt, mx, my, dash)
-        this.audio.ambientStep(dt)
+        // музыка: интенсивность растёт к финалу, у босса — мрачнеет
+        const wb = this.world
+        this.audio.musicTick(wb.boss.active && !wb.boss.dead ? 3 : wb.t > 150 ? 2 : 1)
         const w = this.world
         // сердцебиение на издыхании
         this.heartT -= dt
@@ -345,16 +349,22 @@ export class Game {
         break
       }
       case 'pause': {
-        if (inp.wasPressed('pause') || inp.wasPressed('confirm')) {
+        if (inp.wasPressed('pause')) {
           this.state = 'run'
           this.audio.ui()
+          break
         }
+        if (inp.wasPressed('up')) { this.pauseSel = (this.pauseSel + 3) % 4; this.audio.ui() }
+        if (inp.wasPressed('down')) { this.pauseSel = (this.pauseSel + 1) % 4; this.audio.ui() }
+        if (inp.wasPressed('confirm')) this.pauseAction(this.pauseSel)
         break
       }
       case 'over':
       case 'win': {
         if (inp.wasPressed('restart') || inp.wasPressed('confirm')) {
           this.startRun()
+        } else if (inp.wasPressed('pause')) {
+          this.goTitle()
         }
         break
       }
@@ -439,6 +449,33 @@ export class Game {
     }
   }
 
+  /** Пункт меню паузы: 0 продолжить, 1 заново, 2 звук, 3 в меню. */
+  pauseAction(i: number): void {
+    this.pauseSel = i
+    switch (i) {
+      case 0:
+        this.state = 'run'
+        this.audio.ui()
+        break
+      case 1:
+        this.startRun()
+        break
+      case 2:
+        this.audio.toggleMute()
+        break
+      case 3:
+        this.goTitle()
+        break
+    }
+  }
+
+  /** Выход в главное меню (бросаем текущий ран). */
+  goTitle(): void {
+    this.audio.drone(false)
+    this.state = 'title'
+    this.audio.ui()
+  }
+
   /** Черепки за ран: 1 за каждые 10 убеждённых + премия за победу. */
   private awardShards(win: boolean): void {
     if (this.bot) return // ботам не платят, иначе ?bot=1 — ферма черепков
@@ -469,11 +506,11 @@ export class Game {
   }
 
   /** Полная отрисовка кадра. s/ox/oy — letterbox-транформ в device px. */
-  render(ctx: CanvasRenderingContext2D, s: number, ox: number, oy: number, vignette: HTMLCanvasElement | null): void {
+  render(ctx: CanvasRenderingContext2D, s: number, ox: number, oy: number, vignette: HTMLCanvasElement | null, lowQ = false): void {
     if (!this.sprites) this.sprites = buildSprites(ctx)
-    drawWorld(ctx, this.world, this.sprites, s, ox, oy)
+    drawWorld(ctx, this.world, this.sprites, s, ox, oy, lowQ)
     ctx.setTransform(s, 0, 0, s, ox, oy)
-    if (vignette) ctx.drawImage(vignette, 0, 0, VIEW_W, VIEW_H)
+    if (vignette && !lowQ) ctx.drawImage(vignette, 0, 0, VIEW_W, VIEW_H)
     // тревожная кромка, когда здоровье на донышке
     const wp = this.world.player
     if (this.state === 'run' && !wp.dead && wp.hp < wp.maxHp * 0.3) {
@@ -500,7 +537,7 @@ export class Game {
         drawLevelup(ctx, this.world, this.choices, this.sel, this.coarse)
         break
       case 'pause':
-        drawPause(ctx, this.statLines)
+        drawPause(ctx, this.statLines, this.pauseSel, this.audio.muted, this.coarse)
         break
       case 'over':
         drawEnd(ctx, false, this.statLines, this.uiT, this.coarse)
