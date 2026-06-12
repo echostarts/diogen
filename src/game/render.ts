@@ -357,14 +357,14 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
       ctx.strokeRect(-7 * s, -3.5 * s, 14 * s, 7 * s)
       ctx.restore()
     } else {
-      ctx.fillStyle = PAL.cream
-      ctx.beginPath()
-      ctx.arc(px, py, pr.r * s, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.fillStyle = '#ffffff'
-      ctx.beginPath()
-      ctx.arc(px, py, pr.r * 0.45 * s, 0, Math.PI * 2)
-      ctx.fill()
+      // плевок-комета, хвост против движения
+      const a = Math.atan2(pr.vy, pr.vx)
+      const k = (pr.r / 6) * s * 0.55
+      const cos = Math.cos(a) * k
+      const sin = Math.sin(a) * k
+      ctx.setTransform(cos, sin, -sin, cos, px, py)
+      ctx.drawImage(spr.spit, -44, -12)
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
     }
   }
 
@@ -430,9 +430,32 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
     if (pt.x < vx0 || pt.x > vx1 || pt.y < vy0 || pt.y > vy1) continue
     const a = pt.life / pt.max
     ctx.globalAlpha = a > 1 ? 1 : a
-    ctx.fillStyle = PCOLS[pt.col]
     const sz = pt.size * s
-    ctx.fillRect(wx(pt.x) - sz / 2, wy(pt.y) - sz / 2, sz, sz)
+    if (pt.shape === 1) {
+      // глиняный черепок: терракотовый осколок с тёмной кромкой глазури
+      const cos = Math.cos(pt.rot)
+      const sin = Math.sin(pt.rot)
+      ctx.setTransform(cos, sin, -sin, cos, wx(pt.x), wy(pt.y))
+      ctx.fillStyle = '#c8703a'
+      ctx.beginPath()
+      ctx.moveTo(-sz * 0.6, sz * 0.45)
+      ctx.lineTo(0, -sz * 0.65)
+      ctx.lineTo(sz * 0.62, sz * 0.3)
+      ctx.closePath()
+      ctx.fill()
+      ctx.fillStyle = PAL.ink
+      ctx.beginPath()
+      ctx.moveTo(-sz * 0.6, sz * 0.45)
+      ctx.lineTo(0, -sz * 0.65)
+      ctx.lineTo(sz * 0.18, -sz * 0.34)
+      ctx.lineTo(-sz * 0.38, sz * 0.4)
+      ctx.closePath()
+      ctx.fill()
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+    } else {
+      ctx.fillStyle = PCOLS[pt.col]
+      ctx.fillRect(wx(pt.x) - sz / 2, wy(pt.y) - sz / 2, sz, sz)
+    }
   }
   ctx.globalAlpha = 1
 

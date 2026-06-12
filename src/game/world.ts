@@ -122,7 +122,7 @@ export class World {
     }
     for (let i = 0; i < CFG.caps.gems; i++) this.gems.push({ x: 0, y: 0, v: 1, t: 0, pull: 0 })
     for (let i = 0; i < CFG.caps.parts; i++) {
-      this.parts.push({ x: 0, y: 0, vx: 0, vy: 0, life: 0, max: 1, size: 2, col: 0, drag: 0 })
+      this.parts.push({ x: 0, y: 0, vx: 0, vy: 0, life: 0, max: 1, size: 2, col: 0, drag: 0, shape: 0, rot: 0, rotV: 0 })
     }
     for (let i = 0; i < CFG.caps.nums; i++) this.nums.push({ x: 0, y: 0, v: 0, t: 0, big: false })
     for (let i = 0; i < 12; i++) this.dogs.push({ x: 0, y: 0, state: 0, tUid: 0, tIdx: -1, timer: 0, facing: 1, seed: i / 12 })
@@ -280,6 +280,28 @@ export class World {
     const p = this.parts[this.partCount++]
     p.x = x; p.y = y; p.vx = vx; p.vy = vy
     p.life = life; p.max = life; p.size = size; p.col = col; p.drag = drag
+    p.shape = 0; p.rot = 0; p.rotV = 0
+  }
+
+  /** Глиняные черепки — фирменный эффект смерти. */
+  shatter(x: number, y: number, n: number): void {
+    for (let i = 0; i < n; i++) {
+      if (this.partCount >= this.parts.length) return
+      const p = this.parts[this.partCount++]
+      const a = this.fxr.next() * Math.PI * 2
+      const s = 90 + this.fxr.next() * 150
+      p.x = x; p.y = y
+      p.vx = Math.cos(a) * s
+      p.vy = Math.sin(a) * s - 60 // подброс вверх
+      p.life = 0.5 + this.fxr.next() * 0.35
+      p.max = p.life
+      p.size = 3.5 + this.fxr.next() * 3.5
+      p.col = 0
+      p.drag = 2.2
+      p.shape = 1
+      p.rot = this.fxr.next() * Math.PI * 2
+      p.rotV = (this.fxr.next() - 0.5) * 16
+    }
   }
 
   burst(x: number, y: number, n: number, col: number, speed: number, size: number, life = 0.5): void {
@@ -356,8 +378,9 @@ export class World {
         this.setCaption('ИДЕЯ ПЛАТОНА ОКАЗАЛАСЬ СМЕРТНОЙ', 3)
         this.addTrauma(0.45)
         this.addHitstop(0.06)
-        this.burst(e.x, e.y, 22, PC_INK, 190, 3.5, 0.7)
+        this.burst(e.x, e.y, 18, PC_INK, 190, 3.5, 0.7)
         this.burst(e.x, e.y, 10, PC_OCHRE, 150, 2.5, 0.6)
+        this.shatter(e.x, e.y, 9)
         this.audio.boom()
         return
       }
@@ -368,9 +391,9 @@ export class World {
       const fat = e.kind === EK_PLATONIST
       this.addHitstop(fat ? 0.05 : 0.032)
       if (fat) this.addTrauma(0.22)
-      this.burst(e.x, e.y, fat ? 12 : 7, PC_INK, fat ? 160 : 110, 3, 0.55)
+      this.burst(e.x, e.y, fat ? 10 : 6, PC_INK, fat ? 160 : 110, 3, 0.55)
       this.burst(e.x, e.y, 3, PC_CREAM, 90, 2, 0.4)
-      this.burst(e.x, e.y, 2, PC_BLOOD, 70, 2.5, 0.5)
+      this.shatter(e.x, e.y, fat ? 6 : e.elite ? 5 : 3)
       this.audio.thud(fat)
     } else {
       this.burst(e.x, e.y, 5, PC_INK, 120, 2.5, 0.4)

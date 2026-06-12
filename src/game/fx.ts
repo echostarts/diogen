@@ -19,6 +19,10 @@ export function updateFx(w: World, dt: number): void {
     p.vy *= dec
     p.x += p.vx * dt
     p.y += p.vy * dt
+    if (p.shape === 1) {
+      p.rot += p.rotV * dt
+      p.vy += 260 * dt // черепки падают
+    }
   }
 
   for (let i = w.numCount - 1; i >= 0; i--) {

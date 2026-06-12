@@ -52,6 +52,10 @@ export interface Particle {
   size: number
   col: number
   drag: number
+  /** 0 — квадратик, 1 — вращающийся глиняный черепок. */
+  shape: number
+  rot: number
+  rotV: number
 }
 
 export interface DmgNum {
