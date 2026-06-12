@@ -17,6 +17,9 @@ import { World } from './world'
 
 export type GState = 'title' | 'run' | 'levelup' | 'pause' | 'over' | 'win' | 'shop'
 
+// Эволюции получают фанфару вместо обычного клика выбора карты.
+const EVO_IDS = new Set(['w_sun', 'e_pack', 'e_fan', 'e_pithos'])
+
 // Товары лавки: ключ в Meta, название, описание.
 const SHOP_ITEMS = [
   { key: 'hp' as const, name: 'ТОЛСТЫЕ ДОСКИ', desc: '+8 к максимуму HP за уровень' },
@@ -245,6 +248,7 @@ export class Game {
     this.state = 'run'
     if (this.opts.stress) this.setupStress()
     this.audio.ui()
+    this.audio.duckMusic(false)
   }
 
   private setupStress(): void {
@@ -303,6 +307,7 @@ export class Game {
           this.pauseSel = 0
           this.buildStats(true)
           this.audio.ui()
+          this.audio.duckMusic(true)
           break
         }
         let mx = inp.moveX
@@ -315,9 +320,12 @@ export class Game {
           dash = this.bot.dash
         }
         this.worldTick(dt, mx, my, dash)
-        // музыка: интенсивность растёт к финалу, у босса — мрачнеет
+        // музыка: интенсивность растёт к финалу, у босса — мрачнеет;
+        // после развязки (endState ≠ 0) не дёргаем — там финальный джингл
         const wb = this.world
-        this.audio.musicTick(wb.boss.active && !wb.boss.dead ? 3 : wb.t > 150 ? 2 : 1)
+        if (wb.endState === 0) {
+          this.audio.musicTick(wb.boss.active && !wb.boss.dead ? 3 : wb.t > 150 ? 2 : 1)
+        }
         const w = this.world
         // сердцебиение на издыхании
         this.heartT -= dt
@@ -352,6 +360,7 @@ export class Game {
         if (inp.wasPressed('pause')) {
           this.state = 'run'
           this.audio.ui()
+          this.audio.duckMusic(false)
           break
         }
         if (inp.wasPressed('up')) { this.pauseSel = (this.pauseSel + 3) % 4; this.audio.ui() }
@@ -437,9 +446,11 @@ export class Game {
 
   private choose(i: number): void {
     const w = this.world
-    defByIndex(this.choices[i]).apply(w)
+    const def = defByIndex(this.choices[i])
+    def.apply(w)
     w.pendingLevels--
-    this.audio.ui()
+    if (EVO_IDS.has(def.id)) this.audio.evolve()
+    else this.audio.ui()
     if (w.pendingLevels > 0) {
       rollChoices(w, this.choices)
       this.sel = 1
@@ -456,6 +467,7 @@ export class Game {
       case 0:
         this.state = 'run'
         this.audio.ui()
+        this.audio.duckMusic(false)
         break
       case 1:
         this.startRun()
@@ -472,6 +484,8 @@ export class Game {
   /** Выход в главное меню (бросаем текущий ран). */
   goTitle(): void {
     this.audio.drone(false)
+    this.audio.stopMusic(0.7)
+    this.audio.duckMusic(false)
     this.state = 'title'
     this.audio.ui()
   }

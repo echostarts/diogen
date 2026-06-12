@@ -1,0 +1,11 @@
+Музыка и джинглы (все — CC0 / public domain):
+
+music/run.ogg   — "greek instruments" by Spring Spring
+music/boss.ogg  — "greek boss battle" by Spring Spring
+  https://opengameart.org/content/experimenting-with-greek-instrument-samples
+
+jingles/win.ogg    — jingles_PIZZI02 } из пака "Music Jingles" by Kenney
+jingles/lose.ogg   — jingles_PIZZI01 } https://kenney.nl/assets/music-jingles
+jingles/evolve.ogg — jingles_PIZZI16 }
+
+Полный реестр внешних ассетов: assets/ASSETS.md в корне репозитория.

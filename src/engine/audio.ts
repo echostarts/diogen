@@ -1,5 +1,7 @@
-// Весь звук — синтез через WebAudio, без аудиофайлов.
-// Контекст создаётся лениво по первому жесту пользователя; без него все методы — no-op.
+// Эффекты — синтез через WebAudio; музыка и джинглы — OGG из public/audio
+// (CC0, см. assets/ASSETS.md), а синтез-секвенсор остаётся фолбэком на случай,
+// когда файлы не загрузились. Контекст создаётся лениво по первому жесту
+// пользователя; без него все методы — no-op.
 
 export class AudioSys {
   private ctx: AudioContext | null = null
@@ -12,14 +14,35 @@ export class AudioSys {
   private lastPick = 0
   muted = false
 
+  // Файловая музыка: HTMLAudio-элементы (стримятся, не держат PCM в памяти).
+  private elRun: HTMLAudioElement | null = null
+  private elBoss: HTMLAudioElement | null = null
+  private runOk = true // false после ошибки загрузки — трек берёт на себя синтез
+  private bossOk = true
+  private musicUnlocked = false // авто-play() разрешён браузером (после жеста)
+  private musicKind: 'none' | 'run' | 'boss' = 'none'
+  private ducked = false
+  private readonly fades = new Map<HTMLAudioElement, ReturnType<typeof setInterval>>()
+  private readonly jingles: { win?: AudioBuffer; lose?: AudioBuffer; evolve?: AudioBuffer } = {}
+
   constructor() {
     try {
       this.muted = localStorage.getItem('diogen_mute') === '1'
     } catch { /* приватный режим — пусть будет звук */ }
+    // в скрытой вкладке rAF стоит, а аудио-элементы играли бы дальше — глушим
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        this.elRun?.pause()
+        this.elBoss?.pause()
+      } else if (this.musicKind !== 'none') {
+        void this.curEl()?.play().catch(() => { /* вернётся со следующим жестом */ })
+      }
+    })
   }
 
   /** Создать контекст (вызывается по первому жесту). */
   ensure(): void {
+    this.initMusic()
     if (this.ctx) {
       if (this.ctx.state === 'suspended') void this.ctx.resume()
       return
@@ -35,6 +58,7 @@ export class AudioSys {
       this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate)
       const d = this.noiseBuf.getChannelData(0)
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1
+      this.loadJingles()
     } catch {
       this.ctx = null
     }
@@ -46,7 +70,151 @@ export class AudioSys {
     if (this.ctx && this.master) {
       this.master.gain.setTargetAtTime(this.muted ? 0 : 0.45, this.ctx.currentTime, 0.02)
     }
+    if (this.elRun) this.elRun.muted = this.muted
+    if (this.elBoss) this.elBoss.muted = this.muted
     return this.muted
+  }
+
+  // --- файловая музыка: греческие струнные на ран, боевой трек — на Александра ---
+
+  private mkTrack(path: string, onErr: () => void): HTMLAudioElement | null {
+    try {
+      const el = new Audio(new URL(path, document.baseURI).href)
+      el.loop = true
+      el.preload = 'auto'
+      el.volume = 0
+      el.muted = this.muted
+      el.addEventListener('error', onErr)
+      return el
+    } catch {
+      onErr()
+      return null
+    }
+  }
+
+  /** Создать треки и «разблокировать» автоплей. Зовётся из жеста, идемпотентно. */
+  private initMusic(): void {
+    if (!this.elRun && this.runOk) {
+      this.elRun = this.mkTrack('audio/music/run.ogg', () => { this.runOk = false })
+      this.elBoss = this.mkTrack('audio/music/boss.ogg', () => { this.bossOk = false })
+    }
+    if (this.musicUnlocked) return
+    // iOS требует play() прямо из жеста — пробуем оба трека, лишний глушим
+    for (const el of [this.elRun, this.elBoss]) {
+      if (!el || !el.paused) continue
+      el.play().then(() => {
+        this.musicUnlocked = true
+        if (el !== this.curEl()) {
+          el.pause()
+          el.currentTime = 0
+        }
+      }).catch(() => { /* жест не засчитан — повторим на следующем */ })
+    }
+  }
+
+  private curEl(): HTMLAudioElement | null {
+    return this.musicKind === 'run' ? this.elRun : this.musicKind === 'boss' ? this.elBoss : null
+  }
+
+  // Элементы идут мимо master (0.45), поэтому громкость здесь уже «эффективная»:
+  // музыка чуть ниже пиков эффектов, в паузе приседает втрое.
+  private musicVol(kind: 'run' | 'boss'): number {
+    return (kind === 'run' ? 0.17 : 0.21) * (this.ducked ? 0.3 : 1)
+  }
+
+  /** Плавный фейд громкости элемента; цель 0 ставит трек на паузу в конце. */
+  private fadeTo(el: HTMLAudioElement, target: number, sec: number): void {
+    const old = this.fades.get(el)
+    if (old !== undefined) clearInterval(old)
+    const stepMs = 50
+    const steps = Math.max(1, Math.round((sec * 1000) / stepMs))
+    const delta = (target - el.volume) / steps
+    const id = setInterval(() => {
+      const v = el.volume + delta
+      const done = delta >= 0 ? v >= target : v <= target
+      el.volume = Math.min(1, Math.max(0, done ? target : v))
+      if (done) {
+        if (target <= 0) el.pause()
+        clearInterval(id)
+        this.fades.delete(el)
+      }
+    }, stepMs)
+    this.fades.set(el, id)
+  }
+
+  /**
+   * Держит нужный файловый трек и кроссфейдит ран↔босс.
+   * true — музыка файловая, синтез-секвенсору делать нечего.
+   */
+  private driveMusic(wantBoss: boolean): boolean {
+    const kind = wantBoss ? 'boss' : 'run'
+    const el = wantBoss ? this.elBoss : this.elRun
+    const ok = wantBoss ? this.bossOk : this.runOk
+    if (!el || !ok || !this.musicUnlocked) return false
+    if (this.musicKind !== kind) {
+      const prev = this.curEl()
+      if (prev) this.fadeTo(prev, 0, 1.6)
+      this.musicKind = kind
+      el.currentTime = 0
+      this.drone(false) // синтетический гул под файловый трек не нужен
+      this.fadeTo(el, this.musicVol(kind), wantBoss ? 0.7 : 1.2)
+    }
+    if (el.paused && !document.hidden) {
+      void el.play().catch(() => { this.musicUnlocked = false }) // ждём нового жеста
+    }
+    return true
+  }
+
+  /** Увести музыку в тишину (финал рана, выход в меню). */
+  stopMusic(fadeSec = 1): void {
+    this.musicKind = 'none'
+    for (const el of [this.elRun, this.elBoss]) {
+      if (el && !el.paused) this.fadeTo(el, 0, fadeSec)
+    }
+  }
+
+  /** Приглушить музыку (меню паузы), и вернуть обратно. */
+  duckMusic(on: boolean): void {
+    if (this.ducked === on) return
+    this.ducked = on
+    const kind = this.musicKind
+    if (kind === 'none') return
+    const el = this.curEl()
+    if (el) this.fadeTo(el, this.musicVol(kind), 0.35)
+  }
+
+  // --- джинглы (пиццикато из public/audio/jingles) с синтез-фолбэком ---
+
+  private loadJingles(): void {
+    const ctx = this.ctx
+    if (!ctx) return
+    for (const name of ['win', 'lose', 'evolve'] as const) {
+      fetch(new URL('audio/jingles/' + name + '.ogg', document.baseURI).href)
+        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
+        .then((b) => ctx.decodeAudioData(b))
+        .then((buf) => { this.jingles[name] = buf })
+        .catch(() => { /* останется синтез */ })
+    }
+  }
+
+  private playJingle(name: 'win' | 'lose' | 'evolve', vol: number): boolean {
+    const buf = this.jingles[name]
+    if (!buf || !this.ctx || !this.master) return false
+    const src = this.ctx.createBufferSource()
+    src.buffer = buf
+    const g = this.ctx.createGain()
+    g.gain.value = vol
+    src.connect(g)
+    g.connect(this.master)
+    src.start()
+    return true
+  }
+
+  /** Фанфара на эволюцию оружия. */
+  evolve(): void {
+    if (this.playJingle('evolve', 0.55)) return
+    const seq = [523, 659, 784, 1047]
+    for (let i = 0; i < seq.length; i++) this.osc('triangle', seq[i], seq[i], 0.16, 0.26, i * 0.08)
   }
 
   private osc(type: OscillatorType, f0: number, f1: number, dur: number, vol: number, delay = 0): void {
@@ -161,11 +329,14 @@ export class AudioSys {
   }
 
   /**
-   * Планировщик фоновой музыки. Вызывается каждый игровой тик в ране.
+   * Музыка рана. Вызывается каждый игровой тик в ране.
    * intensity: 1 — ранняя игра, 2 — разгон, 3 — босс.
+   * Если файловые треки доступны — играют они, иначе степ-секвенсор ниже.
    */
   musicTick(intensity: number): void {
-    if (!this.ctx || this.muted) return
+    if (!this.ctx) return
+    if (this.driveMusic(intensity >= 3)) return
+    if (this.muted) return
     const now = this.ctx.currentTime
     const stepDur = 60 / 96 / 4
     // ресинк после паузы/меню
@@ -202,7 +373,10 @@ export class AudioSys {
     if (i === 0 && bar % 4 === 0) this.note('sine', root * 0.5, t, 1.6, 0.12)
   }
 
+  /** Финал рана: музыка уходит, звучит джингл (или синтез-аккорд). */
   stinger(win: boolean): void {
+    this.stopMusic(win ? 1.4 : 0.8)
+    if (this.playJingle(win ? 'win' : 'lose', 0.6)) return
     const seq = win ? [392, 523, 659, 784] : [330, 262, 208, 156]
     for (let i = 0; i < seq.length; i++) this.osc('triangle', seq[i], seq[i], 0.22, 0.3, i * 0.13)
   }
@@ -210,6 +384,8 @@ export class AudioSys {
   /** Низкий гул, пока жив босс. */
   drone(on: boolean): void {
     if (!this.ctx || !this.master) return
+    // под файловый босс-трек синтетический гул не нужен
+    if (on && this.musicUnlocked && this.bossOk && this.elBoss) return
     if (on && !this.droneOsc) {
       const t = this.ctx.currentTime
       this.droneOsc = this.ctx.createOscillator()

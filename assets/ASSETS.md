@@ -14,12 +14,12 @@
 
 | Папка | Что внутри | Источник | Автор | Лицензия |
 | --- | --- | --- | --- | --- |
-| `music/greek-instruments.ogg` | фоновая музыка рана: греческие струнные и флейта | [OGA: Experimenting with Greek Instrument Samples](https://opengameart.org/content/experimenting-with-greek-instrument-samples) | Spring Spring | CC0 |
-| `music/greek-boss-battle.ogg` | музыка боя — под выход Александра | там же | Spring Spring | CC0 |
+| `../public/audio/music/run.ogg` | **в проде**: фоновая музыка рана, греческие струнные и флейта (бывш. `greek instruments`) | [OGA: Experimenting with Greek Instrument Samples](https://opengameart.org/content/experimenting-with-greek-instrument-samples) | Spring Spring | CC0 |
+| `../public/audio/music/boss.ogg` | **в проде**: музыка боя с Александром (бывш. `greek boss battle`) | там же | Spring Spring | CC0 |
 | `sfx/ambience/crowd-shouting.ogg` | гул возмущённой толпы — амбиент агоры, волны, выход босса | [OGA: Crowd shouting/speaking ambience](https://opengameart.org/content/crowd-shoutingspeaking-ambience) | StarNinjas | CC0 |
 | `sfx/impact/` (25 шт.) | удары: `impactWood_*` — бочка-таран, `impactGlass_*` — бьющиеся черепки, `impactSoft_*` — толпа, `impactGeneric_*` — универсальные | [Kenney: Impact Sounds](https://kenney.nl/assets/impact-sounds) | Kenney | CC0 |
 | `sfx/ui/` (16 шт.) | клики, подтверждение, выбор карты, назад, ошибка, переключатель | [Kenney: Interface Sounds](https://kenney.nl/assets/interface-sounds) | Kenney | CC0 |
-| `sfx/jingles/` (17 шт.) | джинглы `PIZZI*` — пиццикато-струнные, ближайшие по тембру к кифаре: левел-ап, победа, поражение | [Kenney: Music Jingles](https://kenney.nl/assets/music-jingles) | Kenney | CC0 |
+| `sfx/jingles/` (17 шт.) | джинглы `PIZZI*` — пиццикато-струнные, ближайшие по тембру к кифаре. Три **в проде** (копии в `public/audio/jingles/`): `PIZZI02` → `win.ogg`, `PIZZI01` → `lose.ogg`, `PIZZI16` → `evolve.ogg` — выбраны анализом контура высоты тона (восходящий/нисходящий/короткий взлёт), остальные лежат на замену | [Kenney: Music Jingles](https://kenney.nl/assets/music-jingles) | Kenney | CC0 |
 | `particles/` (32 шт.) | дым, пыль, свет, искры, звёзды, росчерки — 512px, белые/светлые, тонируются `globalCompositeOperation` под охру и крем | [Kenney: Particle Pack](https://kenney.nl/assets/particle-pack) | Kenney | CC0 |
 | `ui/icons/` (16 шт.) | звук вкл/выкл, музыка вкл/выкл, пауза, выход, галочка, крест, шестерёнка, корзина (лавка), замок (Гиппархия), стрелки (выбор героя), трофей | [Kenney: Game Icons](https://kenney.nl/assets/game-icons) | Kenney | CC0 |
 | `ui/prompts/keyboard/` (18 шт.) | клавиши WASD, стрелки, SPACE, ENTER, ESC, P, M, L, R, 1–3 — для экрана управления | [Kenney: Input Prompts](https://kenney.nl/assets/input-prompts) | Kenney | CC0 |
@@ -27,14 +27,15 @@
 | `tilesets/land-of-pixels/` | топ-даун тайлсет античной Греции (16/32/48px): храмы, колонны, рыночные лотки, террейн | [itch.io: Land of pixels — Ancient greeks tileset](https://marceles.itch.io/land-of-pixels-ancient-greeks-inspired-tileset-top-down) | marceles | **CC BY 4.0** — указать автора в титрах |
 | `tilesets/lpc-ancient-greece/` | исторически выверенная архитектура: дорика/ионика/коринфика, черепичные крыши, **много керамики**, алтари, мозаики | [OGA: LPC compatible Ancient Greek Architecture](https://opengameart.org/content/lpc-compatible-ancient-greek-architecture) | Wolthera van Hövell tot Westerflier (TheraHedwig) | мульти: CC-BY-SA 3.0 / GPL 3.0 / **OGA-BY 3.0** — берём OGA-BY (только указание автора) |
 
-## Как это предлагается применить
+## Как это применяется
 
-1. **Музыка** — самый заметный выигрыш. `greek-instruments.ogg` лупом на ран
-   (сейчас там синтетический дрон), `greek-boss-battle.ogg` — с выхода
-   Александра. Оба CC0 и уже в OGG — формат, который Vite и все браузеры едят.
-2. **Джинглы PIZZI** — на левел-ап / победу / поражение поверх музыки.
-3. **Удары и UI-звуки** — заменить или подмешать к синтезу: таран → `impactWood_heavy`,
-   сбор черепков → `impactGlass`, карты апгрейдов → `click/confirmation`.
+1. **Музыка — подключена** (`src/engine/audio.ts`): `run.ogg` лупом на ран,
+   `boss.ogg` с кроссфейдом на выходе Александра, приглушение в паузе,
+   фейд на финале. Синтез-секвенсор остался фолбэком, если файлы не загрузились.
+2. **Джинглы — подключены**: победа/поражение в `stinger()`, фанфара на
+   выбор карты-эволюции. Фолбэк — прежние синтез-аккорды.
+3. **Удары и UI-звуки** — следующий кандидат: заменить или подмешать к синтезу:
+   таран → `impactWood_heavy`, сбор черепков → `impactGlass`, карты → `click`.
 4. **Частицы** — спрайтовые `smoke/dirt` для пыли из-под бочки и `light/flare`
    для Фонаря/СОЛНЦА дешевле и сочнее, чем рисовать круги; тонировать палитрой `PAL`.
 5. **Иконки и клавиши** — HUD (звук/пауза), экран управления и лавка; белые PNG
