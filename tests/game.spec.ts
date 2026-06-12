@@ -36,8 +36,8 @@ const diag = (page: Page) => page.evaluate(() => window.__diag)
 // ВНИМАНИЕ: сиды (?seed=) пришпилены к текущему балансу. Любая правка
 // логики/баланса меняет раны — тогда сиды надо переподобрать
 // через `node scripts/calibrate.mjs "1 2 3 4 5 6 7 8" 8`.
-const SEED_WIN = 7   // доходит до босса и побеждает (~5:34)
-const SEED_DIE = 2   // умирает до босса (~2:56)
+const SEED_WIN = 5   // доходит до босса и побеждает (~5:41)
+const SEED_DIE = 1   // умирает до босса (~3:45)
 
 test('страница грузится: канвас, тайтл, ноль ошибок консоли', async ({ page }) => {
   const errors = trackErrors(page)

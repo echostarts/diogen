@@ -128,9 +128,10 @@ export function updateEnemies(w: World, dt: number): void {
       sx = dx - dy * wob
       sy = dy + dx * wob
     } else if (e.kind === EK_PLATO) {
-      // сам Платон: медленно давит и зовёт платоников из мира идей
-      sx = dx
-      sy = dy
+      // сам Платон: степенный вблизи, но неотвратимый — издали нагоняет
+      const chase = Math.min(1.8, Math.max(1, d / 350))
+      sx = dx * chase
+      sy = dy * chase
       e.fire -= dt
       if (e.fire <= 0 && !p.dead) {
         e.fire = CFG.mini.summonCd
@@ -158,9 +159,18 @@ export function updateEnemies(w: World, dt: number): void {
     e.ky *= dec
     if (Math.abs(sx) > 0.05) e.facing = sx > 0 ? 1 : -1
 
-    // отставших телепортируем обратно на кольцо — плотность не проседает
-    // (Платон не телепортируется: идея движется степенно)
-    if (d > 1450 && e.kind !== EK_PLATO) {
+    // отставших телепортируем обратно на кольцо — плотность не проседает.
+    // Платон не бегает — идея просто оказывается ближе.
+    if (e.kind === EK_PLATO) {
+      if (d > 1000) {
+        const a = w.rng.next() * Math.PI * 2
+        e.x = p.x + Math.cos(a) * 620
+        e.y = p.y + Math.sin(a) * 620
+        e.kx = 0
+        e.ky = 0
+        w.burst(e.x, e.y, 8, PC_CREAM, 110, 2.5, 0.5)
+      }
+    } else if (d > 1450) {
       const a = w.rng.next() * Math.PI * 2
       e.x = p.x + Math.cos(a) * CFG.spawn.ringDist
       e.y = p.y + Math.sin(a) * CFG.spawn.ringDist

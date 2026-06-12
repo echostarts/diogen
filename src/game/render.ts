@@ -1,4 +1,4 @@
-import { PAL, PCOLS, VIEW_H, VIEW_W } from '../config'
+import { EK_PLATO, PAL, PCOLS, VIEW_H, VIEW_W } from '../config'
 import type { Sprites } from './sprites'
 import type { World } from './world'
 import { lanternCenter } from './weapons'
@@ -49,7 +49,51 @@ function fonts(s: number): void {
 
 const lpos = { x: 0, y: 0, r: 0 }
 
-// Детерминированный хэш клетки → [0,1) — для расстановки реквизита без ГПСЧ.
+// Стрелка на краю экрана к важной цели за кадром.
+function edgePointer(
+  ctx: CanvasRenderingContext2D, label: string, color: string,
+  tx: number, ty: number, camX: number, camY: number,
+  s: number, ox: number, oy: number, font: string,
+): void {
+  // цель в видовых координатах
+  const vx = tx - camX
+  const vy = ty - camY
+  if (vx > -30 && vx < VIEW_W + 30 && vy > -30 && vy < VIEW_H + 30) return // и так видно
+  const cx = VIEW_W / 2
+  const cy = VIEW_H / 2
+  const dx = vx - cx
+  const dy = vy - cy
+  const a = Math.atan2(dy, dx)
+  // прижимаем точку к рамке с отступом
+  const inset = 46
+  const kx = dx !== 0 ? (dx > 0 ? (VIEW_W - inset - cx) / dx : (inset - cx) / dx) : Infinity
+  const ky = dy !== 0 ? (dy > 0 ? (VIEW_H - inset - cy) / dy : (inset - cy) / dy) : Infinity
+  const k = Math.min(kx, ky)
+  const px = ox + (cx + dx * k) * s
+  const py = oy + (cy + dy * k) * s
+  // стрелка
+  const cos = Math.cos(a) * s
+  const sin = Math.sin(a) * s
+  ctx.setTransform(cos, sin, -sin, cos, px, py)
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.moveTo(16, 0)
+  ctx.lineTo(2, -8)
+  ctx.lineTo(5, 0)
+  ctx.lineTo(2, 8)
+  ctx.closePath()
+  ctx.fill()
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+  // подпись с подложкой
+  ctx.font = font
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = 'rgba(33, 21, 16, 0.65)'
+  const tw = ctx.measureText(label).width
+  ctx.fillRect(px - tw / 2 - 5 * s, py + 12 * s, tw + 10 * s, 15 * s)
+  ctx.fillStyle = color
+  ctx.fillText(label, px, py + 19.5 * s)
+}
 function cellHash(cx: number, cy: number, salt: number): number {
   let h = (cx * 374761393 + cy * 668265263 + salt * 1442695041) | 0
   h = Math.imul(h ^ (h >>> 13), 1274126177)
@@ -492,5 +536,19 @@ export function drawWorld(ctx: CanvasRenderingContext2D, w: World, spr: Sprites,
     ctx.fillText(f.text, tx, ty)
   }
   ctx.globalAlpha = 1
+
+  // --- указатели на боссов за кадром ---
+  if (w.miniSpawned) {
+    for (let i = 0; i < w.enemyCount; i++) {
+      const e = w.enemies[i]
+      if (e.kind === EK_PLATO && !e.dying) {
+        edgePointer(ctx, 'ПЛАТОН', PAL.ochre, e.x, e.y, camX, camY, s, ox, oy, fontFloat)
+        break
+      }
+    }
+  }
+  if (b.active && !b.dead) {
+    edgePointer(ctx, 'АЛЕКСАНДР', PAL.glow, b.x, b.y, camX, camY, s, ox, oy, fontFloat)
+  }
   ctx.setTransform(1, 0, 0, 1, 0, 0)
 }
