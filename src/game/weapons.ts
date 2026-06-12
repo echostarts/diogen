@@ -236,6 +236,7 @@ function updateRam(w: World): void {
   const lvl = w.weapons.barrel
   const kbMul = w.evoPithos ? CFG.pithos.kbMul : 1
   const dmg = B.dmg * (1 + 0.3 * (lvl - 1)) * w.dmgMult() * (dashing ? B.dashDmg : 1)
+  let rammed = false
   const n = w.hash.query(p.x, p.y, p.r + 30)
   for (let k = 0; k < n; k++) {
     const i = w.hash.out[k]
@@ -247,6 +248,7 @@ function updateRam(w: World): void {
     if (dx * dx + dy * dy >= rr * rr) continue
     e.ramCd = B.hitCd
     w.damageEnemy(i, dmg, p.x - p.vx * 0.05, p.y - p.vy * 0.05, B.kb * kbMul * (dashing ? 1.4 : 1))
+    rammed = true
   }
   const b = w.boss
   if (b.active && !b.dead && b.touchCd <= -0.2) {
@@ -256,8 +258,10 @@ function updateRam(w: World): void {
     if (dx * dx + dy * dy < rr * rr) {
       w.damageBoss(dmg, false)
       b.touchCd = 0.3 // не душить босса каждый тик тараном
+      rammed = true
     }
   }
+  if (rammed) w.audio.ram() // один деревянный тук на тик, не на врага
 }
 
 function updateProjs(w: World, dt: number): void {

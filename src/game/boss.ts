@@ -25,6 +25,7 @@ export function maybeSpawnBoss(w: World): void {
   w.burst(b.x, b.y, 24, PC_OCHRE, 220, 3, 0.8)
   w.audio.boom()
   w.audio.horn()
+  w.audio.crowd(0.5) // агора ахнула: царь пришёл лично
   w.audio.drone(true)
 }
 

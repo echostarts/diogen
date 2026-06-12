@@ -16,9 +16,9 @@
 | --- | --- | --- | --- | --- |
 | `../public/audio/music/run.ogg` | **в проде**: фоновая музыка рана, греческие струнные и флейта (бывш. `greek instruments`) | [OGA: Experimenting with Greek Instrument Samples](https://opengameart.org/content/experimenting-with-greek-instrument-samples) | Spring Spring | CC0 |
 | `../public/audio/music/boss.ogg` | **в проде**: музыка боя с Александром (бывш. `greek boss battle`) | там же | Spring Spring | CC0 |
-| `sfx/ambience/crowd-shouting.ogg` | гул возмущённой толпы — амбиент агоры, волны, выход босса | [OGA: Crowd shouting/speaking ambience](https://opengameart.org/content/crowd-shoutingspeaking-ambience) | StarNinjas | CC0 |
-| `sfx/impact/` (25 шт.) | удары: `impactWood_*` — бочка-таран, `impactGlass_*` — бьющиеся черепки, `impactSoft_*` — толпа, `impactGeneric_*` — универсальные | [Kenney: Impact Sounds](https://kenney.nl/assets/impact-sounds) | Kenney | CC0 |
-| `sfx/ui/` (16 шт.) | клики, подтверждение, выбор карты, назад, ошибка, переключатель | [Kenney: Interface Sounds](https://kenney.nl/assets/interface-sounds) | Kenney | CC0 |
+| `sfx/ambience/crowd-shouting.ogg` | гул возмущённой толпы. **В проде** (`public/audio/sfx/crowd_0.ogg`): тихо на старте рана, громко на выходе Александра | [OGA: Crowd shouting/speaking ambience](https://opengameart.org/content/crowd-shoutingspeaking-ambience) | StarNinjas | CC0 |
+| `sfx/impact/` (25 шт.) | удары. **В проде**: `impactWood_heavy_*` → `ram_*` (бочка-таран), `impactSoft_heavy_*` → `hit_*` (фоли-слой жирных попаданий и ран игрока). Остальные (glass/generic/wood light) — в запасе | [Kenney: Impact Sounds](https://kenney.nl/assets/impact-sounds) | Kenney | CC0 |
+| `sfx/ui/` (16 шт.) | интерфейс. **В проде**: `click_*` (навигация меню), `confirmation_*` → `confirm_*` (взять карту), `error_*` → `deny_*` (не хватает черепков), `glass_002` → `shard_0` (звон покупки). Остальные — в запасе | [Kenney: Interface Sounds](https://kenney.nl/assets/interface-sounds) | Kenney | CC0 |
 | `sfx/jingles/` (17 шт.) | джинглы `PIZZI*` — пиццикато-струнные, ближайшие по тембру к кифаре. Три **в проде** (копии в `public/audio/jingles/`): `PIZZI02` → `win.ogg`, `PIZZI01` → `lose.ogg`, `PIZZI16` → `evolve.ogg` — выбраны анализом контура высоты тона (восходящий/нисходящий/короткий взлёт), остальные лежат на замену | [Kenney: Music Jingles](https://kenney.nl/assets/music-jingles) | Kenney | CC0 |
 | `particles/` (32 шт.) | дым, пыль, свет, искры, звёзды, росчерки — 512px, белые/светлые, тонируются `globalCompositeOperation` под охру и крем | [Kenney: Particle Pack](https://kenney.nl/assets/particle-pack) | Kenney | CC0 |
 | `ui/icons/` (16 шт.) | звук вкл/выкл, музыка вкл/выкл, пауза, выход, галочка, крест, шестерёнка, корзина (лавка), замок (Гиппархия), стрелки (выбор героя), трофей | [Kenney: Game Icons](https://kenney.nl/assets/game-icons) | Kenney | CC0 |
@@ -34,12 +34,19 @@
    фейд на финале. Синтез-секвенсор остался фолбэком, если файлы не загрузились.
 2. **Джинглы — подключены**: победа/поражение в `stinger()`, фанфара на
    выбор карты-эволюции. Фолбэк — прежние синтез-аккорды.
-3. **Удары и UI-звуки** — следующий кандидат: заменить или подмешать к синтезу:
-   таран → `impactWood_heavy`, сбор черепков → `impactGlass`, карты → `click`.
-4. **Частицы** — спрайтовые `smoke/dirt` для пыли из-под бочки и `light/flare`
-   для Фонаря/СОЛНЦА дешевле и сочнее, чем рисовать круги; тонировать палитрой `PAL`.
-5. **Иконки и клавиши** — HUD (звук/пауза), экран управления и лавка; белые PNG
-   перекрашиваются в `PAL.cream`/`PAL.ochre` одной операцией.
+3. **Удары и UI-звуки — подключены** (банк сэмплов в `audio.ts`, случайные
+   варианты с разбросом высоты): дерево на таран (раз в тик, рейт-лимит),
+   мягкий тяжёлый удар слоем под синтез на жирных попаданиях и ранах,
+   клики/подтверждение/отказ/звон в меню и лавке, гул толпы на старте рана
+   и выходе босса. У каждого метода остался синтез-фолбэк.
+4. **Частицы — решено не вносить.** Рендер уже имеет фирменные эффекты в
+   стиле вазописи (глиняные черепки с кромкой глазури, чернильные всплески,
+   свечение фонаря пре-рендеренным спрайтом, корона лучей СОЛНЦА) — мягкие
+   аэрографные спрайты Kenney размыли бы графический язык. Лежат в запасе.
+5. **Иконки и клавиши — решено не вносить.** Кнопки звука/паузы в HUD и
+   текстовые подсказки управления нарисованы вручную в палитре и шрифте игры
+   и стилистически целостны. Kenney-наборы остаются на случай отдельного
+   экрана настроек/управления.
 6. **Тайлсеты** — в пиксель-арте, со стилем игры напрямую не совместимы.
    Лежат как референс пропов агоры (формы амфор, колонн, лотков) и как
    готовая база, если когда-нибудь захочется отдельный пиксельный режим/прототип.

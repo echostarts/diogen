@@ -8,4 +8,13 @@ jingles/win.ogg    — jingles_PIZZI02 } из пака "Music Jingles" by Kenney
 jingles/lose.ogg   — jingles_PIZZI01 } https://kenney.nl/assets/music-jingles
 jingles/evolve.ogg — jingles_PIZZI16 }
 
+sfx/ram_*.ogg     — impactWood_heavy_*  } "Impact Sounds" by Kenney
+sfx/hit_*.ogg     — impactSoft_heavy_*  } https://kenney.nl/assets/impact-sounds
+sfx/click_*.ogg   — click_*        } "Interface Sounds" by Kenney
+sfx/confirm_*.ogg — confirmation_* } https://kenney.nl/assets/interface-sounds
+sfx/deny_*.ogg    — error_*        }
+sfx/shard_0.ogg   — glass_002      }
+sfx/crowd_0.ogg   — "Crowd shouting/speaking ambience" by StarNinjas
+  https://opengameart.org/content/crowd-shoutingspeaking-ambience
+
 Полный реестр внешних ассетов: assets/ASSETS.md в корне репозитория.

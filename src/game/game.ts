@@ -148,9 +148,10 @@ export class Game {
       this.meta.w -= cost
       this.meta.chars |= 1 << this.charId
       this.saveMeta()
+      this.audio.shard()
       this.audio.levelup()
     } else {
-      this.audio.thud(false)
+      this.audio.deny()
     }
   }
 
@@ -178,13 +179,13 @@ export class Game {
     if (lvl >= CFG.meta.max) return
     const cost = this.shopCost(lvl)
     if (this.meta.w < cost) {
-      this.audio.thud(false)
+      this.audio.deny()
       return
     }
     this.meta.w -= cost
     this.meta[item.key]++
     this.saveMeta()
-    this.audio.levelup()
+    this.audio.shard()
   }
 
   shopRows(out: ShopRow[]): void {
@@ -249,6 +250,7 @@ export class Game {
     if (this.opts.stress) this.setupStress()
     this.audio.ui()
     this.audio.duckMusic(false)
+    this.audio.crowd(0.16) // агора уже недовольна
   }
 
   private setupStress(): void {
@@ -450,7 +452,7 @@ export class Game {
     def.apply(w)
     w.pendingLevels--
     if (EVO_IDS.has(def.id)) this.audio.evolve()
-    else this.audio.ui()
+    else this.audio.confirm()
     if (w.pendingLevels > 0) {
       rollChoices(w, this.choices)
       this.sel = 1

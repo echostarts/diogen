@@ -23,7 +23,9 @@ export class AudioSys {
   private musicKind: 'none' | 'run' | 'boss' = 'none'
   private ducked = false
   private readonly fades = new Map<HTMLAudioElement, ReturnType<typeof setInterval>>()
-  private readonly jingles: { win?: AudioBuffer; lose?: AudioBuffer; evolve?: AudioBuffer } = {}
+  // Банк коротких сэмплов: имя → варианты (играется случайный).
+  private readonly bank = new Map<string, AudioBuffer[]>()
+  private lastRam = 0
 
   constructor() {
     try {
@@ -58,7 +60,7 @@ export class AudioSys {
       this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate)
       const d = this.noiseBuf.getChannelData(0)
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1
-      this.loadJingles()
+      this.loadBank()
     } catch {
       this.ctx = null
     }
@@ -183,25 +185,48 @@ export class AudioSys {
     if (el) this.fadeTo(el, this.musicVol(kind), 0.35)
   }
 
-  // --- джинглы (пиццикато из public/audio/jingles) с синтез-фолбэком ---
+  // --- банк сэмплов (джинглы и фоли из public/audio) с синтез-фолбэками ---
 
-  private loadJingles(): void {
+  private loadBank(): void {
     const ctx = this.ctx
     if (!ctx) return
-    for (const name of ['win', 'lose', 'evolve'] as const) {
-      fetch(new URL('audio/jingles/' + name + '.ogg', document.baseURI).href)
-        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
-        .then((b) => ctx.decodeAudioData(b))
-        .then((buf) => { this.jingles[name] = buf })
-        .catch(() => { /* останется синтез */ })
+    const plan: Array<[string, string[]]> = [
+      ['win', ['audio/jingles/win.ogg']],
+      ['lose', ['audio/jingles/lose.ogg']],
+      ['evolve', ['audio/jingles/evolve.ogg']],
+      ['ram', seq('ram', 5)],     // дерево: бочка-таран
+      ['hit', seq('hit', 5)],     // мягкий тяжёлый удар: жирные попадания, раны
+      ['click', seq('click', 3)], // навигация меню
+      ['confirm', seq('confirm', 2)],
+      ['deny', seq('deny', 2)],   // не хватает черепков
+      ['shard', seq('shard', 1)], // звон покупки
+      ['crowd', seq('crowd', 1)], // гул агоры
+    ]
+    for (const [name, files] of plan) {
+      const list: AudioBuffer[] = []
+      this.bank.set(name, list)
+      for (const f of files) {
+        fetch(new URL(f, document.baseURI).href)
+          .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
+          .then((b) => ctx.decodeAudioData(b))
+          .then((buf) => { list.push(buf) })
+          .catch(() => { /* останется синтез */ })
+      }
+    }
+    function seq(name: string, n: number): string[] {
+      const out: string[] = []
+      for (let i = 0; i < n; i++) out.push('audio/sfx/' + name + '_' + i + '.ogg')
+      return out
     }
   }
 
-  private playJingle(name: 'win' | 'lose' | 'evolve', vol: number): boolean {
-    const buf = this.jingles[name]
-    if (!buf || !this.ctx || !this.master) return false
+  /** Случайный вариант из банка; rateVar — разброс высоты. false — банк пуст. */
+  private sfx(name: string, vol: number, rate = 1, rateVar = 0): boolean {
+    const list = this.bank.get(name)
+    if (!list || list.length === 0 || !this.ctx || !this.master) return false
     const src = this.ctx.createBufferSource()
-    src.buffer = buf
+    src.buffer = list[(Math.random() * list.length) | 0]
+    src.playbackRate.value = rate + (Math.random() * 2 - 1) * rateVar
     const g = this.ctx.createGain()
     g.gain.value = vol
     src.connect(g)
@@ -212,9 +237,42 @@ export class AudioSys {
 
   /** Фанфара на эволюцию оружия. */
   evolve(): void {
-    if (this.playJingle('evolve', 0.55)) return
+    if (this.sfx('evolve', 0.55)) return
     const seq = [523, 659, 784, 1047]
     for (let i = 0; i < seq.length; i++) this.osc('triangle', seq[i], seq[i], 0.16, 0.26, i * 0.08)
+  }
+
+  /** Деревянный тук бочки-тарана (не чаще раза в ~90 мс). */
+  ram(): void {
+    if (!this.ctx) return
+    const now = this.ctx.currentTime
+    if (now - this.lastRam < 0.09) return
+    this.lastRam = now
+    if (this.sfx('ram', 0.4, 1, 0.12)) return
+    this.thud(true)
+  }
+
+  /** Подтверждение выбора (карта апгрейда). */
+  confirm(): void {
+    if (this.sfx('confirm', 0.38)) return
+    this.osc('square', 520, 700, 0.07, 0.12)
+  }
+
+  /** Отказ: не хватает черепков. */
+  deny(): void {
+    if (this.sfx('deny', 0.38)) return
+    this.osc('sawtooth', 160, 90, 0.18, 0.2)
+  }
+
+  /** Звон черепков при покупке. */
+  shard(): void {
+    if (this.sfx('shard', 0.5, 1, 0.08)) return
+    this.osc('square', 1100, 1600, 0.08, 0.12)
+  }
+
+  /** Гул возмущённой толпы: старт рана, выход Александра. */
+  crowd(vol: number): void {
+    this.sfx('crowd', vol, 1, 0.06)
   }
 
   private osc(type: OscillatorType, f0: number, f1: number, dur: number, vol: number, delay = 0): void {
@@ -259,6 +317,7 @@ export class AudioSys {
     this.lastThud = now
     this.osc('triangle', big ? 130 : 105, big ? 40 : 55, big ? 0.14 : 0.07, big ? 0.5 : 0.22)
     if (big) this.noise(0.12, 0.25, 500, 90, 'lowpass')
+    if (big) this.sfx('hit', 0.26, 0.85, 0.1) // фоли-слой поверх синтеза
   }
 
   /** Щелчок подбора оливки. */
@@ -272,10 +331,17 @@ export class AudioSys {
 
   shoot(): void { this.noise(0.06, 0.18, 1800, 400, 'highpass') }
   dogBite(): void { this.osc('sawtooth', 300, 90, 0.06, 0.12) }
-  hurt(): void { this.osc('sawtooth', 170, 50, 0.25, 0.4); this.noise(0.15, 0.3, 350, 80, 'lowpass') }
+  hurt(): void {
+    this.osc('sawtooth', 170, 50, 0.25, 0.4)
+    this.noise(0.15, 0.3, 350, 80, 'lowpass')
+    this.sfx('hit', 0.45, 0.7, 0.06) // фоли-вес пропущенного удара
+  }
   dash(): void { this.noise(0.25, 0.3, 280, 1900, 'bandpass') }
   levelup(): void { this.osc('sine', 660, 660, 0.12, 0.3); this.osc('sine', 990, 990, 0.2, 0.3, 0.1) }
-  ui(): void { this.osc('square', 520, 560, 0.04, 0.1) }
+  ui(): void {
+    if (this.sfx('click', 0.3)) return
+    this.osc('square', 520, 560, 0.04, 0.1)
+  }
   boom(): void { this.osc('sine', 75, 28, 0.55, 0.65); this.noise(0.4, 0.4, 600, 60, 'lowpass') }
 
   /** Горн глашатая — новая волна. */
@@ -376,7 +442,7 @@ export class AudioSys {
   /** Финал рана: музыка уходит, звучит джингл (или синтез-аккорд). */
   stinger(win: boolean): void {
     this.stopMusic(win ? 1.4 : 0.8)
-    if (this.playJingle(win ? 'win' : 'lose', 0.6)) return
+    if (this.sfx(win ? 'win' : 'lose', 0.6)) return
     const seq = win ? [392, 523, 659, 784] : [330, 262, 208, 156]
     for (let i = 0; i < seq.length; i++) this.osc('triangle', seq[i], seq[i], 0.22, 0.3, i * 0.13)
   }
